@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 // Use Accelerate URL for seeding (tables already exist from db:push)
 const prisma = new PrismaClient({
@@ -8,6 +9,72 @@ const prisma = new PrismaClient({
 
 async function main() {
   console.log('Seeding database...');
+
+  // Default Users
+  const defaultPassword = await bcrypt.hash('password123', 12);
+
+  const users = [
+    {
+      email: 'superadmin@notaris.com',
+      name: 'Super Admin',
+      passwordHash: defaultPassword,
+      role: 'SUPER_ADMIN' as const,
+      emailVerifiedAt: new Date(),
+    },
+    {
+      email: 'admin@notaris.com',
+      name: 'Admin Notaris',
+      passwordHash: defaultPassword,
+      role: 'ADMIN' as const,
+      emailVerifiedAt: new Date(),
+    },
+    {
+      email: 'staff@notaris.com',
+      name: 'Staff Notaris',
+      passwordHash: defaultPassword,
+      role: 'STAFF' as const,
+      emailVerifiedAt: new Date(),
+    },
+    {
+      email: 'client@notaris.com',
+      name: 'Client Demo',
+      passwordHash: defaultPassword,
+      role: 'CLIENT' as const,
+      emailVerifiedAt: new Date(),
+    },
+  ];
+
+  for (const user of users) {
+    const existingUser = await prisma.user.findUnique({ where: { email: user.email } });
+    if (!existingUser) {
+      const createdUser = await prisma.user.create({ data: user });
+
+      // Create Staff profile for STAFF role
+      if (user.role === 'STAFF') {
+        await prisma.staff.create({
+          data: {
+            userId: createdUser.id,
+            employeeId: 'EMP001',
+            department: 'Legal',
+            position: 'Staff Notaris',
+          },
+        });
+      }
+
+      // Create Client profile for CLIENT role
+      if (user.role === 'CLIENT') {
+        await prisma.client.create({
+          data: {
+            userId: createdUser.id,
+            clientNumber: 'CLT001',
+            phone: '+62 812 0000 0000',
+            address: 'Jakarta, Indonesia',
+          },
+        });
+      }
+    }
+  }
+  console.log('Users seeded');
 
   // Site Settings
   const siteSettings = [
