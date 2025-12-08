@@ -16,35 +16,67 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
-  const handleCredentialsLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess('');
 
-    try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        callbackUrl,
-        redirect: false,
-      });
+    if (activeTab === 'register') {
+      // Handle registration
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password }),
+        });
 
-      if (result?.error) {
-        setError('Email atau password salah');
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || 'Registrasi gagal');
+          setIsLoading(false);
+          return;
+        }
+
+        setSuccess('Registrasi berhasil! Silakan login.');
+        setActiveTab('login');
+        setName('');
+        setPassword('');
         setIsLoading(false);
-      } else if (result?.ok) {
-        router.refresh();
-        router.push(callbackUrl);
+      } catch {
+        setError('Terjadi kesalahan. Silakan coba lagi.');
+        setIsLoading(false);
       }
-    } catch {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
-      setIsLoading(false);
+    } else {
+      // Handle login
+      try {
+        const result = await signIn('credentials', {
+          email,
+          password,
+          callbackUrl,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError('Email atau password salah');
+          setIsLoading(false);
+        } else if (result?.ok) {
+          router.refresh();
+          router.push(callbackUrl);
+        }
+      } catch {
+        setError('Terjadi kesalahan. Silakan coba lagi.');
+        setIsLoading(false);
+      }
     }
   };
 
@@ -140,10 +172,35 @@ function LoginForm() {
           </div>
 
           {/* Credentials Form */}
-          <form onSubmit={handleCredentialsLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+                {success}
+              </div>
+            )}
+
+            {activeTab === 'register' && (
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-slate-300">
+                  Nama Lengkap
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Nama lengkap Anda"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
+                    required
+                  />
+                </div>
               </div>
             )}
 
@@ -167,7 +224,10 @@ function LoginForm() {
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-slate-300">
-                Password
+                Password{' '}
+                {activeTab === 'register' && (
+                  <span className="text-slate-500">(min. 6 karakter)</span>
+                )}
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -179,6 +239,7 @@ function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500"
                   required
+                  minLength={activeTab === 'register' ? 6 : undefined}
                 />
               </div>
             </div>

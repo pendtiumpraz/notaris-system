@@ -53,18 +53,62 @@ export async function POST(request: Request) {
 
   try {
     const data = await request.json();
+    const { subject, documentId, recipientId } = data;
 
-    // Create conversation
+    if (!recipientId) {
+      return NextResponse.json({ error: 'Recipient is required' }, { status: 400 });
+    }
+
+    // Check if recipient exists
+    const recipient = await prisma.user.findUnique({
+      where: { id: recipientId, deletedAt: null },
+    });
+
+    if (!recipient) {
+      return NextResponse.json({ error: 'Recipient not found' }, { status: 404 });
+    }
+
+    // Check if conversation already exists between these users
+    const existingConversation = await prisma.conversation.findFirst({
+      where: {
+        AND: [
+          { participants: { some: { userId: session.user.id } } },
+          { participants: { some: { userId: recipientId } } },
+        ],
+        closedAt: null,
+      },
+      include: {
+        document: {
+          select: { id: true, title: true, documentNumber: true },
+        },
+        participants: {
+          include: {
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: { select: { id: true, name: true, avatarUrl: true } },
+          },
+        },
+        _count: { select: { messages: true } },
+      },
+    });
+
+    if (existingConversation) {
+      // Return existing conversation
+      return NextResponse.json(existingConversation);
+    }
+
+    // Create new conversation
     const conversation = await prisma.conversation.create({
       data: {
-        subject: data.subject || null,
-        documentId: data.documentId || null,
+        subject: subject || null,
+        documentId: documentId || null,
         participants: {
-          create: [
-            { userId: session.user.id },
-            // If targeting specific users, add them here
-            ...(data.participantIds || []).map((id: string) => ({ userId: id })),
-          ],
+          create: [{ userId: session.user.id }, { userId: recipientId }],
         },
       },
       include: {
@@ -73,32 +117,19 @@ export async function POST(request: Request) {
         },
         participants: {
           include: {
-            user: { select: { id: true, name: true, avatarUrl: true } },
+            user: { select: { id: true, name: true, avatarUrl: true, role: true } },
+          },
+        },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            sender: { select: { id: true, name: true, avatarUrl: true } },
           },
         },
         _count: { select: { messages: true } },
       },
     });
-
-    // Add admin/staff to conversation if user is client
-    if (session.user.role === 'CLIENT') {
-      const admins = await prisma.user.findMany({
-        where: {
-          role: { in: ['SUPER_ADMIN', 'ADMIN'] },
-          deletedAt: null,
-        },
-        take: 1,
-      });
-
-      if (admins.length > 0) {
-        await prisma.conversationParticipant.create({
-          data: {
-            conversationId: conversation.id,
-            userId: admins[0].id,
-          },
-        });
-      }
-    }
 
     return NextResponse.json(conversation);
   } catch (error) {
