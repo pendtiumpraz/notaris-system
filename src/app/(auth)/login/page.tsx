@@ -36,12 +36,12 @@ function LoginForm() {
 
       if (result?.error) {
         setError('Email atau password salah');
-      } else {
-        router.push(callbackUrl);
+        setIsLoading(false);
+      } else if (result?.ok) {
+        window.location.href = callbackUrl;
       }
     } catch {
       setError('Terjadi kesalahan. Silakan coba lagi.');
-    } finally {
       setIsLoading(false);
     }
   };
