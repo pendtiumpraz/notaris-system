@@ -260,12 +260,15 @@ export default function UsersPage() {
                 className="pl-10 bg-slate-800 border-slate-700"
               />
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select
+              value={roleFilter || 'all'}
+              onValueChange={(v) => setRoleFilter(v === 'all' ? '' : v)}
+            >
               <SelectTrigger className="w-full sm:w-40 bg-slate-800 border-slate-700">
                 <SelectValue placeholder="Semua Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Role</SelectItem>
+                <SelectItem value="all">Semua Role</SelectItem>
                 <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="STAFF">Staff</SelectItem>

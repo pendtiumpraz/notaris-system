@@ -125,14 +125,16 @@ export default function AuditLogsPage() {
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <Select
-              value={filters.action}
-              onValueChange={(value) => setFilters({ ...filters, action: value })}
+              value={filters.action || 'all'}
+              onValueChange={(value) =>
+                setFilters({ ...filters, action: value === 'all' ? '' : value })
+              }
             >
               <SelectTrigger className="w-full sm:w-48 bg-slate-800 border-slate-700">
                 <SelectValue placeholder="Semua Aksi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Aksi</SelectItem>
+                <SelectItem value="all">Semua Aksi</SelectItem>
                 {availableFilters.actions.map((action) => (
                   <SelectItem key={action} value={action}>
                     {getActionLabel(action).label}
@@ -142,14 +144,16 @@ export default function AuditLogsPage() {
             </Select>
 
             <Select
-              value={filters.resourceType}
-              onValueChange={(value) => setFilters({ ...filters, resourceType: value })}
+              value={filters.resourceType || 'all'}
+              onValueChange={(value) =>
+                setFilters({ ...filters, resourceType: value === 'all' ? '' : value })
+              }
             >
               <SelectTrigger className="w-full sm:w-48 bg-slate-800 border-slate-700">
                 <SelectValue placeholder="Semua Entitas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Entitas</SelectItem>
+                <SelectItem value="all">Semua Entitas</SelectItem>
                 {availableFilters.resourceTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
