@@ -1,6 +1,10 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Use Accelerate URL for seeding (tables already exist from db:push)
+const prisma = new PrismaClient({
+  accelerateUrl: process.env.DATABASE_URL,
+});
 
 async function main() {
   console.log('Seeding database...');
