@@ -31,6 +31,7 @@ function LoginForm() {
       const result = await signIn('credentials', {
         email,
         password,
+        callbackUrl,
         redirect: false,
       });
 
@@ -38,7 +39,8 @@ function LoginForm() {
         setError('Email atau password salah');
         setIsLoading(false);
       } else if (result?.ok) {
-        window.location.href = callbackUrl;
+        router.refresh();
+        router.push(callbackUrl);
       }
     } catch {
       setError('Terjadi kesalahan. Silakan coba lagi.');
