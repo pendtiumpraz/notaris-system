@@ -2,9 +2,10 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-// Use Accelerate URL for seeding (tables already exist from db:push)
+// Use Accelerate URL for seeding
+const accelerateUrl = process.env.PRISMA_DATABASE_URL || process.env.DATABASE_URL;
 const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  ...(accelerateUrl?.startsWith('prisma+') ? { accelerateUrl } : {}),
 });
 
 async function main() {
