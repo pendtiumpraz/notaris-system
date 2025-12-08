@@ -17,6 +17,8 @@ import {
   User,
   ChevronLeft,
   Globe,
+  Shield,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@prisma/client';
@@ -81,6 +83,12 @@ const sidebarItems: SidebarItem[] = [
     label: 'Layanan',
     href: '/admin/services',
     icon: <Building className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+  },
+  {
+    label: 'Audit Log',
+    href: '/admin/audit-logs',
+    icon: <ClipboardList className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
   },
   {

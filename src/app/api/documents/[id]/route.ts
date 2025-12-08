@@ -33,6 +33,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
+    // Role-based access check
+    if (session.user.role === 'CLIENT') {
+      // Client can only see their own documents
+      if (document.client?.userId !== session.user.id) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+    } else if (session.user.role === 'STAFF') {
+      // Staff can see assigned documents
+      const staff = await prisma.staff.findUnique({
+        where: { userId: session.user.id },
+      });
+      if (document.staffId !== staff?.id) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+    }
+    // ADMIN and SUPER_ADMIN can see all documents
+
     return NextResponse.json(document);
   } catch (error) {
     console.error('Failed to fetch document:', error);
@@ -53,20 +70,56 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const existingDoc = await prisma.document.findUnique({
       where: { id },
+      include: { client: true },
     });
 
     if (!existingDoc) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
+    // Role-based access check
+    if (session.user.role === 'CLIENT') {
+      // Client can only update their own documents and cannot change status
+      if (existingDoc.client?.userId !== session.user.id) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+      // Client cannot change status directly
+      if (data.status && data.status !== existingDoc.status) {
+        return NextResponse.json(
+          { error: 'Clients cannot change document status' },
+          { status: 403 }
+        );
+      }
+    } else if (session.user.role === 'STAFF') {
+      // Staff can only update assigned documents
+      const staff = await prisma.staff.findUnique({
+        where: { userId: session.user.id },
+      });
+      if (existingDoc.staffId !== staff?.id) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+    }
+    // ADMIN and SUPER_ADMIN can update all documents
+
     const updateData: Record<string, unknown> = {};
 
-    if (data.title) updateData.title = data.title;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.status) updateData.status = data.status;
-    if (data.priority) updateData.priority = data.priority;
-    if (data.dueDate) updateData.dueDate = new Date(data.dueDate);
-    if (data.staffId) updateData.staffId = data.staffId;
+    // ADMIN/SUPER_ADMIN can update everything
+    if (['SUPER_ADMIN', 'ADMIN'].includes(session.user.role)) {
+      if (data.title) updateData.title = data.title;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.status) updateData.status = data.status;
+      if (data.priority) updateData.priority = data.priority;
+      if (data.dueDate) updateData.dueDate = new Date(data.dueDate);
+      if (data.staffId) updateData.staffId = data.staffId;
+    } else if (session.user.role === 'STAFF') {
+      // Staff can update status and notes
+      if (data.status) updateData.status = data.status;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+    } else if (session.user.role === 'CLIENT') {
+      // Client can only update description and notes
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+    }
 
     const document = await prisma.document.update({
       where: { id },
