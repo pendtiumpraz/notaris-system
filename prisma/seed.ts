@@ -55,7 +55,6 @@ async function main() {
           data: {
             userId: createdUser.id,
             employeeId: 'EMP001',
-            department: 'Legal',
             position: 'Staff Notaris',
           },
         });
@@ -67,7 +66,6 @@ async function main() {
           data: {
             userId: createdUser.id,
             clientNumber: 'CLT001',
-            phone: '+62 812 0000 0000',
             address: 'Jakarta, Indonesia',
           },
         });
