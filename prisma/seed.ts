@@ -193,7 +193,8 @@ async function main() {
   }
   console.log('Site settings seeded');
 
-  // FAQs
+  // FAQs - Delete existing and create fresh
+  await prisma.fAQ.deleteMany({});
   const faqs = [
     {
       question: 'Apa saja layanan yang tersedia?',
@@ -244,7 +245,8 @@ async function main() {
   }
   console.log('FAQs seeded');
 
-  // Testimonials
+  // Testimonials - Delete existing and create fresh
+  await prisma.testimonial.deleteMany({});
   const testimonials = [
     {
       clientName: 'Andi Wijaya',
@@ -296,7 +298,8 @@ async function main() {
   }
   console.log('Testimonials seeded');
 
-  // Team Members
+  // Team Members - Delete existing and create fresh
+  await prisma.teamMember.deleteMany({});
   const teamMembers = [
     {
       name: 'Budi Santoso, S.H., M.Kn.',
@@ -329,7 +332,8 @@ async function main() {
   }
   console.log('Team members seeded');
 
-  // Service Infos
+  // Service Infos - Delete existing and create fresh
+  await prisma.serviceInfo.deleteMany({});
   const serviceInfos = [
     {
       title: 'Akta Pendirian Perusahaan',
@@ -395,7 +399,8 @@ async function main() {
   }
   console.log('Service infos seeded');
 
-  // Document Types
+  // Document Types - Delete existing and create fresh
+  await prisma.documentType.deleteMany({});
   const documentTypes = [
     {
       name: 'Akta Pendirian PT',
@@ -424,7 +429,8 @@ async function main() {
   }
   console.log('Document types seeded');
 
-  // Services
+  // Services - Delete existing and create fresh
+  await prisma.service.deleteMany({});
   const services = [
     { name: 'Konsultasi Umum', description: 'Konsultasi umum dengan notaris', durationMinutes: 30 },
     {
