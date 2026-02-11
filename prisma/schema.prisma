@@ -44,6 +44,24 @@ enum NotificationType {
   APPOINTMENT_REMINDER
   NEW_MESSAGE
   SYSTEM
+  INVOICE_UPDATE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  QRIS
+  CREDIT_CARD
+  OTHER
 }
 
 // ==================== USER MANAGEMENT ====================
@@ -76,6 +94,10 @@ model User {
   timelineChanges      DocumentTimeline[]
   connectedDrives      GoogleDrive[]
   aiResults            AIResult[]
+  createdInvoices      Invoice[]              @relation("InvoiceCreator")
+  receivedPayments     Payment[]              @relation("PaymentReceiver")
+  createdTemplates     DocumentTemplate[]     @relation("TemplateCreator")
+  verifiedChecklists   DocumentChecklist[]    @relation("ChecklistVerifier")
 
   // NextAuth relations
   accounts Account[]
@@ -107,23 +129,43 @@ model Account {
 }
 
 model Client {
-  id          String   @id @default(uuid())
-  userId      String   @unique @map("user_id")
-  clientNumber String  @unique @map("client_number")
-  companyName String?  @map("company_name")
-  address     String?
-  idNumber    String?  @map("id_number")
-  metadata    Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  clientNumber   String    @unique @map("client_number")
+  companyName    String?   @map("company_name")
+  address        String?
+  idNumber       String?   @map("id_number")
+
+  // Notaris-specific fields
+  nik            String?   // Nomor Induk Kependudukan (16 digit)
+  npwp           String?   // Nomor Pokok Wajib Pajak
+  birthPlace     String?   @map("birth_place") // Tempat lahir
+  birthDate      DateTime? @map("birth_date")  // Tanggal lahir
+  religion       String?   // Agama
+  maritalStatus  String?   @map("marital_status") // Status perkawinan
+  occupation     String?   // Pekerjaan
+  nationality    String?   @default("WNI") // Kewarganegaraan
+  spouseName     String?   @map("spouse_name") // Nama pasangan
+  rtRw           String?   @map("rt_rw") // RT/RW
+  kelurahan      String?   // Kelurahan/Desa
+  kecamatan      String?   // Kecamatan
+  city           String?   // Kota/Kabupaten
+  province       String?   // Provinsi
+  postalCode     String?   @map("postal_code") // Kode pos
+
+  metadata       Json?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   // Relations
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents    Document[]
   appointments Appointment[]
+  invoices     Invoice[]
 
   @@index([userId])
   @@index([clientNumber])
+  @@index([nik])
   @@map("clients")
 }
 
@@ -193,6 +235,8 @@ model Document {
   conversation Conversation?
   appointments Appointment[]
   aiResults    AIResult[]
+  invoices     Invoice[]
+  checklists   DocumentChecklist[]
 
   @@index([clientId])
   @@index([staffId])
@@ -213,6 +257,7 @@ model DocumentType {
 
   // Relations
   documents Document[]
+  templates DocumentTemplate[]
 
   @@map("document_types")
 }
@@ -637,3 +682,123 @@ model License {
   @@map("licenses")
 }
 
+// ==================== BILLING & INVOICES ====================
+
+model Invoice {
+  id             String        @id @default(uuid())
+  invoiceNumber  String        @unique @map("invoice_number") // e.g. INV-2026-0001
+  clientId       String        @map("client_id")
+  documentId     String?       @map("document_id")
+  createdById    String        @map("created_by_id")
+  status         InvoiceStatus @default(DRAFT)
+  subtotal       Float         @default(0)
+  taxPercent     Float         @default(0) @map("tax_percent")
+  taxAmount      Float         @default(0) @map("tax_amount")
+  discount       Float         @default(0)
+  totalAmount    Float         @default(0) @map("total_amount")
+  paidAmount     Float         @default(0) @map("paid_amount")
+  notes          String?       @db.Text
+  dueDate        DateTime?     @map("due_date")
+  sentAt         DateTime?     @map("sent_at")
+  paidAt         DateTime?     @map("paid_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  client    Client        @relation(fields: [clientId], references: [id])
+  document  Document?     @relation(fields: [documentId], references: [id])
+  createdBy User          @relation("InvoiceCreator", fields: [createdById], references: [id])
+  items     InvoiceItem[]
+  payments  Payment[]
+
+  @@index([clientId])
+  @@index([documentId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid())
+  invoiceId   String  @map("invoice_id")
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float   @map("unit_price")
+  amount      Float   @default(0)
+  order       Int     @default(0)
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  invoiceId     String        @map("invoice_id")
+  amount        Float
+  method        PaymentMethod @default(BANK_TRANSFER)
+  reference     String?       // Nomor referensi / bukti transfer
+  notes         String?
+  receivedById  String?       @map("received_by_id")
+  paidAt        DateTime      @default(now()) @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  invoice    Invoice @relation(fields: [invoiceId], references: [id])
+  receivedBy User?   @relation("PaymentReceiver", fields: [receivedById], references: [id])
+
+  @@index([invoiceId])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+// ==================== DOCUMENT TEMPLATES ====================
+
+model DocumentTemplate {
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  documentTypeId  String?  @map("document_type_id")
+  content         String   @db.Text // Template content with {{placeholders}}
+  placeholders    Json?    // List of available placeholders with labels
+  category        String?  // e.g. Akta, Surat, Perjanjian
+  isActive        Boolean  @default(true) @map("is_active")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  documentType DocumentType? @relation(fields: [documentTypeId], references: [id])
+  createdBy    User          @relation("TemplateCreator", fields: [createdById], references: [id])
+
+  @@index([documentTypeId])
+  @@index([category])
+  @@index([isActive])
+  @@map("document_templates")
+}
+
+// ==================== DOCUMENT CHECKLIST ====================
+
+model DocumentChecklist {
+  id          String   @id @default(uuid())
+  documentId  String   @map("document_id")
+  label       String   // e.g. "KTP Asli", "Sertifikat Tanah"
+  isRequired  Boolean  @default(true) @map("is_required")
+  isCompleted Boolean  @default(false) @map("is_completed")
+  completedAt DateTime? @map("completed_at")
+  verifiedBy  String?  @map("verified_by") // Staff yang verifikasi
+  verifiedAt  DateTime? @map("verified_at")
+  notes       String?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  verifier User?    @relation("ChecklistVerifier", fields: [verifiedBy], references: [id])
+
+  @@index([documentId])
+  @@map("document_checklists")
+}

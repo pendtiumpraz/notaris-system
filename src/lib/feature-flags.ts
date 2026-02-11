@@ -30,7 +30,7 @@ export interface FeatureDefinition {
   key: string;
   label: string;
   description: string;
-  category: 'core' | 'admin' | 'ai' | 'communication' | 'management';
+  category: 'core' | 'admin' | 'ai' | 'communication' | 'management' | 'billing';
   sidebarHref?: string; // Maps to sidebar item href
   applicableRoles: ManageableRole[]; // Which roles CAN potentially see this feature
   isAI: boolean;
@@ -215,6 +215,39 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     isFullAI: false,
   },
 
+  // Billing & Financial
+  {
+    key: 'billing',
+    label: 'Tagihan',
+    description: 'Kelola invoice dan pembayaran klien',
+    category: 'billing',
+    sidebarHref: '/billing',
+    applicableRoles: ['ADMIN', 'STAFF', 'CLIENT'],
+    isAI: false,
+    isFullAI: false,
+  },
+
+  // Notaris-specific
+  {
+    key: 'document_templates',
+    label: 'Template Akta',
+    description: 'Template dokumen notaris untuk generate akta otomatis',
+    category: 'admin',
+    sidebarHref: '/admin/templates',
+    applicableRoles: ['ADMIN', 'STAFF'],
+    isAI: false,
+    isFullAI: false,
+  },
+  {
+    key: 'document_checklist',
+    label: 'Checklist Dokumen',
+    description: 'Checklist persyaratan dokumen per jenis akta',
+    category: 'core',
+    applicableRoles: ['ADMIN', 'STAFF', 'CLIENT'],
+    isAI: false,
+    isFullAI: false,
+  },
+
   // AI Features
   {
     key: 'ai_settings',
@@ -344,6 +377,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
 export const CATEGORY_LABELS: Record<string, string> = {
   core: '🏠 Fitur Utama',
   admin: '⚙️ Admin & Manajemen',
+  billing: '💰 Keuangan',
   ai: '🤖 Fitur AI',
   communication: '💬 Komunikasi',
   management: '👥 Staf',

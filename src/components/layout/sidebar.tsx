@@ -24,6 +24,8 @@ import {
   Bot,
   Package,
   KeyRound,
+  Receipt,
+  Stamp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/feature-flags-context';
@@ -67,6 +69,13 @@ const sidebarItems: SidebarItem[] = [
     featureKey: 'messages',
   },
   {
+    label: 'Tagihan',
+    href: '/billing',
+    icon: <Receipt className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'billing',
+  },
+  {
     label: 'Ketersediaan',
     href: '/staff/availability',
     icon: <CalendarClock className="w-5 h-5" />,
@@ -100,6 +109,13 @@ const sidebarItems: SidebarItem[] = [
     icon: <ClipboardList className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
     featureKey: 'document_types',
+  },
+  {
+    label: 'Template Akta',
+    href: '/admin/templates',
+    icon: <Stamp className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
+    featureKey: 'document_templates',
   },
   {
     label: 'Layanan',
