@@ -43,7 +43,7 @@ interface Document {
   priority: string;
   dueDate: string | null;
   createdAt: string;
-  client: { user: { name: string } };
+  client: { id: string; user: { name: string } };
   staff: { user: { name: string } } | null;
   documentType: { id: string; name: string };
 }
@@ -52,6 +52,11 @@ interface DocumentType {
   id: string;
   name: string;
   requiredDocuments: string[] | null;
+}
+
+interface ClientOption {
+  id: string;
+  user: { name: string; email: string };
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -103,6 +108,7 @@ export default function DocumentsPage() {
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,6 +119,7 @@ export default function DocumentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocuments, setTotalDocuments] = useState(0);
   const [selectedTypeRequirements, setSelectedTypeRequirements] = useState<string[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState('');
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<'create' | 'edit' | 'view'>('create');
@@ -153,14 +160,36 @@ export default function DocumentsPage() {
     }
   }, []);
 
+  const fetchClients = useCallback(async () => {
+    if (!isStaffOrAdmin) return;
+    try {
+      const res = await fetch('/api/admin/users?role=CLIENT&limit=100');
+      if (res.ok) {
+        const data = await res.json();
+        setClients(
+          data.users
+            ?.map((u: any) => ({
+              id: u.client?.id,
+              user: { name: u.name, email: u.email },
+            }))
+            .filter((c: ClientOption) => c.id) || []
+        );
+      }
+    } catch (error) {
+      console.error('Failed to fetch clients:', error);
+    }
+  }, [isStaffOrAdmin]);
+
   useEffect(() => {
     fetchDocuments();
     fetchDocumentTypes();
-  }, [fetchDocuments, fetchDocumentTypes]);
+    fetchClients();
+  }, [fetchDocuments, fetchDocumentTypes, fetchClients]);
 
   const openCreateSheet = () => {
     setSheetMode('create');
     setSelectedDocument(null);
+    setSelectedClientId('');
     setPendingFiles([]);
     setUploadProgress('');
     setIsSheetOpen(true);
@@ -175,6 +204,7 @@ export default function DocumentsPage() {
   const openEditSheet = (doc: Document) => {
     setSheetMode('edit');
     setSelectedDocument(doc);
+    setSelectedClientId(doc.client?.id || '');
     setIsSheetOpen(true);
   };
 
@@ -219,8 +249,13 @@ export default function DocumentsPage() {
 
     const data: Record<string, unknown> = {};
     formData.forEach((value, key) => {
-      if (key !== 'files' && value) data[key] = value;
+      if (key !== 'files' && key !== 'clientId' && value) data[key] = value;
     });
+
+    // Add clientId for Admin/Staff
+    if (isStaffOrAdmin && selectedClientId) {
+      data.clientId = selectedClientId;
+    }
 
     try {
       const res = await fetch(endpoint, {
@@ -525,6 +560,26 @@ export default function DocumentsPage() {
               }}
               className="space-y-4 mt-6"
             >
+              {/* Client Selection for Admin/Staff */}
+              {isStaffOrAdmin && (
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Klien *</Label>
+                  <select
+                    name="clientId"
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    required
+                    className="w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-white"
+                  >
+                    <option value="">Pilih Klien...</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.user.name} ({c.user.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-slate-300">Judul Dokumen</Label>
                 <Input
