@@ -16,11 +16,18 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
 
+  // Check for LICENSE_REQUIRED error from URL (Google OAuth redirect)
+  const urlError = searchParams.get('error');
+  const licenseError =
+    urlError === 'LICENSE_REQUIRED'
+      ? 'Sistem belum memiliki license aktif. Hubungi Super Admin untuk mengaktifkan license.'
+      : '';
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(licenseError);
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
 
@@ -67,7 +74,13 @@ function LoginForm() {
         });
 
         if (result?.error) {
-          setError('Email atau password salah');
+          if (result.error.includes('LICENSE_REQUIRED')) {
+            setError(
+              'Sistem belum memiliki license aktif. Hubungi Super Admin untuk mengaktifkan license.'
+            );
+          } else {
+            setError('Email atau password salah');
+          }
           setIsLoading(false);
         } else if (result?.ok) {
           router.refresh();

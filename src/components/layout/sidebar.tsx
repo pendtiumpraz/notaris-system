@@ -188,13 +188,21 @@ interface SidebarProps {
 
 export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const { isFeatureEnabled } = useFeatureFlags();
+  const { isFeatureEnabled, hasActiveLicense } = useFeatureFlags();
+
+  // Items allowed for SUPER_ADMIN when no license is active
+  const NO_LICENSE_ALLOWED_HREFS = ['/admin/license', '/admin/users', '/dashboard'];
 
   const filteredItems = sidebarItems.filter((item) => {
     // Must have role permission
     if (!item.roles.includes(userRole)) return false;
 
-    // SUPER_ADMIN always sees everything
+    // SUPER_ADMIN without license: only show License, User Management, Dashboard
+    if (userRole === 'SUPER_ADMIN' && !hasActiveLicense) {
+      return NO_LICENSE_ALLOWED_HREFS.includes(item.href);
+    }
+
+    // SUPER_ADMIN with license: sees everything
     if (userRole === 'SUPER_ADMIN') return true;
 
     // Special keys always visible

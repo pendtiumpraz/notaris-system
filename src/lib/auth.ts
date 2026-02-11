@@ -3,6 +3,7 @@ import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
+import { isRoleAllowedToLogin } from './license-check';
 import type { UserRole } from '@prisma/client';
 
 declare module 'next-auth' {
@@ -60,6 +61,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // License enforcement: only SUPER_ADMIN can login without active license
+        const canLogin = await isRoleAllowedToLogin(user.role);
+        if (!canLogin) {
+          throw new Error('LICENSE_REQUIRED');
+        }
+
         return {
           id: user.id,
           email: user.email,
@@ -79,6 +86,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (existingUser && existingUser.deletedAt) {
           return false;
+        }
+
+        // License enforcement for Google OAuth
+        const role = existingUser?.role || 'CLIENT';
+        const canLogin = await isRoleAllowedToLogin(role);
+        if (!canLogin) {
+          return '/login?error=LICENSE_REQUIRED';
         }
 
         if (!existingUser) {

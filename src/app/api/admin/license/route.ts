@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { activateLicense, verifyLicense, getAppDomain, generateServerHash } from '@/lib/license';
+import { activateLicense, getAppDomain, generateServerHash } from '@/lib/license';
+import { invalidateLicenseCache } from '@/lib/license-check';
 import {
   FEATURE_FLAGS_KEY,
   PACKAGE_PRESETS,
@@ -118,6 +119,9 @@ export async function POST(request: Request) {
       result.license.features
     );
 
+    // Invalidate license cache so auth picks up new status immediately
+    invalidateLicenseCache();
+
     return NextResponse.json({
       success: true,
       license: {
@@ -150,6 +154,9 @@ export async function DELETE() {
       where: { isActive: true },
       data: { isActive: false },
     });
+
+    // Invalidate license cache
+    invalidateLicenseCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {

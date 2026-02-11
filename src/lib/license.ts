@@ -17,7 +17,7 @@ import crypto from 'crypto';
 
 // License server URL — configured via env
 export const LICENSE_SERVER_URL =
-  process.env.LICENSE_SERVER_URL || 'https://license.notaris-system.com';
+  process.env.LICENSE_SERVER_URL || 'https://license-server-notaris.vercel.app';
 
 export interface LicenseActivationRequest {
   licenseKey: string;
