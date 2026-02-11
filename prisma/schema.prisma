@@ -747,7 +747,7 @@ model Payment {
   createdAt     DateTime      @default(now()) @map("created_at")
 
   // Relations
-  invoice    Invoice @relation(fields: [invoiceId], references: [id])
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   receivedBy User?   @relation("PaymentReceiver", fields: [receivedById], references: [id])
 
   @@index([invoiceId])

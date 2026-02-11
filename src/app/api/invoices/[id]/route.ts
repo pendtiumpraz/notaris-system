@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       const tax = taxPercent ?? 0;
       const disc = discount ?? 0;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const subtotal = items.reduce(
         (sum: number, item: any) => sum + (item.quantity || 1) * item.unitPrice,
         0
@@ -129,6 +129,8 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    // Delete payments first (items cascade from schema)
+    await prisma.payment.deleteMany({ where: { invoiceId: id } });
     await prisma.invoice.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

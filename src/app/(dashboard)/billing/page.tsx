@@ -189,7 +189,6 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json();
         setClients(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data.users
             ?.map((u: any) => ({
               id: u.client?.id,
@@ -213,7 +212,7 @@ export default function BillingPage() {
     return (
       inv.invoiceNumber.toLowerCase().includes(q) ||
       inv.client.user.name.toLowerCase().includes(q) ||
-      inv.document?.title.toLowerCase().includes(q)
+      (inv.document?.title?.toLowerCase().includes(q) ?? false)
     );
   });
 
@@ -230,6 +229,23 @@ export default function BillingPage() {
   const openView = (inv: Invoice) => {
     setSelectedInvoice(inv);
     setSheetMode('view');
+  };
+
+  const openEdit = (inv: Invoice) => {
+    setSelectedInvoice(inv);
+    setFormClientId(inv.client.id);
+    setFormItems(
+      inv.items.map((i) => ({
+        description: i.description,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      }))
+    );
+    setFormTax(inv.taxPercent);
+    setFormDiscount(inv.discount);
+    setFormNotes(inv.notes || '');
+    setFormDueDate(inv.dueDate ? inv.dueDate.substring(0, 10) : '');
+    setSheetMode('edit');
   };
 
   const openPayment = (inv: Invoice) => {
@@ -272,26 +288,34 @@ export default function BillingPage() {
 
     setIsSaving(true);
     try {
-      const res = await fetch('/api/invoices', {
-        method: 'POST',
+      const isEdit = sheetMode === 'edit' && selectedInvoice;
+      const url = isEdit ? `/api/invoices/${selectedInvoice.id}` : '/api/invoices';
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      const payload: Record<string, unknown> = {
+        items: formItems,
+        taxPercent: formTax,
+        discount: formDiscount,
+        notes: formNotes,
+        dueDate: formDueDate || null,
+      };
+      if (!isEdit) {
+        payload.clientId = formClientId;
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: formClientId,
-          items: formItems,
-          taxPercent: formTax,
-          discount: formDiscount,
-          notes: formNotes,
-          dueDate: formDueDate || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        toast.success('Tagihan berhasil dibuat');
+        toast.success(isEdit ? 'Tagihan diperbarui' : 'Tagihan berhasil dibuat');
         setSheetMode('closed');
         fetchInvoices();
       } else {
         const data = await res.json();
-        toast.error(data.error || 'Gagal membuat tagihan');
+        toast.error(data.error || 'Gagal menyimpan tagihan');
       }
     } catch {
       toast.error('Gagal menghubungi server');
@@ -546,6 +570,9 @@ export default function BillingPage() {
                         )}
                         {isAdmin && inv.status === 'DRAFT' && (
                           <>
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(inv)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => handleDelete(inv.id)}>
                               <Trash2 className="w-4 h-4 text-red-400" />
                             </Button>
@@ -561,12 +588,19 @@ export default function BillingPage() {
         </div>
       )}
 
-      {/* Create Invoice Sheet */}
-      <Sheet open={sheetMode === 'create'} onOpenChange={() => setSheetMode('closed')}>
+      {/* Create/Edit Invoice Sheet */}
+      <Sheet
+        open={sheetMode === 'create' || sheetMode === 'edit'}
+        onOpenChange={() => setSheetMode('closed')}
+      >
         <SheetContent className="bg-slate-900 border-slate-800 w-full sm:max-w-xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="text-white">Buat Tagihan Baru</SheetTitle>
-            <SheetDescription>Buat invoice untuk klien</SheetDescription>
+            <SheetTitle className="text-white">
+              {sheetMode === 'edit' ? 'Edit Tagihan' : 'Buat Tagihan Baru'}
+            </SheetTitle>
+            <SheetDescription>
+              {sheetMode === 'edit' ? 'Perbarui detail invoice' : 'Buat invoice untuk klien'}
+            </SheetDescription>
           </SheetHeader>
 
           <div className="space-y-4 mt-6">
@@ -710,7 +744,7 @@ export default function BillingPage() {
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Buat Tagihan
+              {sheetMode === 'edit' ? 'Simpan Perubahan' : 'Buat Tagihan'}
             </Button>
           </SheetFooter>
         </SheetContent>
