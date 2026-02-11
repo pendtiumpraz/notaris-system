@@ -98,6 +98,7 @@ model User {
   receivedPayments     Payment[]              @relation("PaymentReceiver")
   createdTemplates     DocumentTemplate[]     @relation("TemplateCreator")
   verifiedChecklists   DocumentChecklist[]    @relation("ChecklistVerifier")
+  createdRepertorium   Repertorium[]          @relation("RepertoriumCreator")
 
   // NextAuth relations
   accounts Account[]
@@ -226,6 +227,21 @@ model Document {
   updatedAt      DateTime         @updatedAt @map("updated_at")
   deletedAt      DateTime?        @map("deleted_at")
 
+  // Notaris-specific fields
+  nomorAkta       Int?             @map("nomor_akta")
+  tanggalAkta     DateTime?        @map("tanggal_akta")
+  jenisAkta       String?          @map("jenis_akta")
+  penghadap       Json?                                  // [{nama, peran}]
+  saksiSaksi      String[]         @map("saksi_saksi")
+  minutaDijilid   Boolean          @default(false) @map("minuta_dijilid")
+  jilidBulan      Int?             @map("jilid_bulan")
+  jilidTahun      Int?             @map("jilid_tahun")
+  isPPAT          Boolean          @default(false) @map("is_ppat")
+  nomorSertifikat String?          @map("nomor_sertifikat")
+  lokasiTanah     String?          @map("lokasi_tanah")
+  luasTanah       Float?           @map("luas_tanah")
+  nilaiTransaksi  Float?           @map("nilai_transaksi")
+
   // Relations
   client       Client             @relation(fields: [clientId], references: [id])
   staff        Staff?             @relation(fields: [staffId], references: [id])
@@ -237,6 +253,7 @@ model Document {
   aiResults    AIResult[]
   invoices     Invoice[]
   checklists   DocumentChecklist[]
+  repertorium  Repertorium[]
 
   @@index([clientId])
   @@index([staffId])
@@ -801,4 +818,68 @@ model DocumentChecklist {
 
   @@index([documentId])
   @@map("document_checklists")
+}
+
+// ==================== REPERTORIUM & KLAPPER ====================
+
+model Repertorium {
+  id              String    @id @default(uuid())
+  nomorUrut       Int       @map("nomor_urut")
+  nomorBulanan    Int       @map("nomor_bulanan")
+  tanggal         DateTime
+  sifatAkta       String    @map("sifat_akta")
+  namaPenghadap   String[]  @map("nama_penghadap")
+  keterangan      String?
+  documentId      String?   @map("document_id")
+  createdById     String    @map("created_by_id")
+  tahun           Int
+  bulan           Int
+  isPPAT          Boolean   @default(false) @map("is_ppat")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  document  Document? @relation(fields: [documentId], references: [id])
+  createdBy User      @relation("RepertoriumCreator", fields: [createdById], references: [id])
+  klapper   Klapper[]
+
+  @@unique([nomorUrut, tahun])
+  @@index([tahun, bulan])
+  @@index([tanggal])
+  @@index([documentId])
+  @@map("repertorium")
+}
+
+model Klapper {
+  id              String   @id @default(uuid())
+  namaPenghadap   String   @map("nama_penghadap")
+  sifatAkta       String   @map("sifat_akta")
+  nomorAkta       Int      @map("nomor_akta")
+  tanggalAkta     DateTime @map("tanggal_akta")
+  hurufAwal       String   @map("huruf_awal")
+  repertoriumId   String   @map("repertorium_id")
+  bulan           Int
+  tahun           Int
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  repertorium Repertorium @relation(fields: [repertoriumId], references: [id], onDelete: Cascade)
+
+  @@index([hurufAwal, tahun, bulan])
+  @@index([namaPenghadap])
+  @@index([repertoriumId])
+  @@map("klapper")
+}
+
+// ==================== SERVICE FEES ====================
+
+model ServiceFee {
+  id          String   @id @default(uuid())
+  name        String
+  category    String   @default("notaris")
+  baseFee     Float    @map("base_fee")
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("service_fees")
 }

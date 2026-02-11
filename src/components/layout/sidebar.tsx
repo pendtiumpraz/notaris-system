@@ -26,6 +26,8 @@ import {
   KeyRound,
   Receipt,
   Stamp,
+  BookOpen,
+  BookText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/feature-flags-context';
@@ -74,6 +76,20 @@ const sidebarItems: SidebarItem[] = [
     icon: <Receipt className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'billing',
+  },
+  {
+    label: 'Repertorium',
+    href: '/repertorium',
+    icon: <BookOpen className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
+    featureKey: 'repertorium',
+  },
+  {
+    label: 'Klapper',
+    href: '/klapper',
+    icon: <BookText className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
+    featureKey: 'klapper',
   },
   {
     label: 'Ketersediaan',

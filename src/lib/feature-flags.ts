@@ -229,6 +229,26 @@ export const FEATURE_DEFINITIONS: FeatureDefinition[] = [
 
   // Notaris-specific
   {
+    key: 'repertorium',
+    label: 'Repertorium',
+    description: 'Buku daftar akta notaris (wajib UU No. 2/2014)',
+    category: 'core',
+    sidebarHref: '/repertorium',
+    applicableRoles: ['ADMIN', 'STAFF'],
+    isAI: false,
+    isFullAI: false,
+  },
+  {
+    key: 'klapper',
+    label: 'Klapper',
+    description: 'Indeks alfabetis penghadap akta',
+    category: 'core',
+    sidebarHref: '/klapper',
+    applicableRoles: ['ADMIN', 'STAFF'],
+    isAI: false,
+    isFullAI: false,
+  },
+  {
     key: 'document_templates',
     label: 'Template Akta',
     description: 'Template dokumen notaris untuk generate akta otomatis',
