@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
 
-    const where = {
+    const where: Record<string, unknown> = {
       deletedAt: null,
       ...(search && {
         OR: [
@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
         ],
       }),
       ...(role && { role: role as any }),
+      // ADMIN should not see SUPER_ADMIN users
+      ...(session.user.role === 'ADMIN' && {
+        role: role ? (role === 'SUPER_ADMIN' ? '__NONE__' : role) : { not: 'SUPER_ADMIN' },
+      }),
     };
 
     const [users, total] = await Promise.all([

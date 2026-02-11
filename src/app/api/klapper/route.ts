@@ -61,3 +61,44 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Gagal memuat klapper' }, { status: 500 });
   }
 }
+
+// POST - Create manual klapper entry
+export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user || !['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { namaPenghadap, sifatAkta, nomorAkta, tanggalAkta, repertoriumId } = body;
+
+    if (!namaPenghadap || !sifatAkta || !nomorAkta || !tanggalAkta || !repertoriumId) {
+      return NextResponse.json({ error: 'Semua field wajib diisi' }, { status: 400 });
+    }
+
+    const tanggal = new Date(tanggalAkta);
+    const entry = await prisma.klapper.create({
+      data: {
+        namaPenghadap: namaPenghadap.trim(),
+        sifatAkta,
+        nomorAkta: parseInt(nomorAkta),
+        tanggalAkta: tanggal,
+        hurufAwal: namaPenghadap.trim().charAt(0).toUpperCase(),
+        repertoriumId,
+        bulan: tanggal.getMonth() + 1,
+        tahun: tanggal.getFullYear(),
+      },
+      include: {
+        repertorium: {
+          select: { id: true, nomorUrut: true, sifatAkta: true, tanggal: true },
+        },
+      },
+    });
+
+    return NextResponse.json(entry, { status: 201 });
+  } catch (error) {
+    console.error('Failed to create klapper entry:', error);
+    return NextResponse.json({ error: 'Gagal menambah entri klapper' }, { status: 500 });
+  }
+}

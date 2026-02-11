@@ -17,6 +17,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const sortBy = searchParams.get('sortBy') || 'nomorUrut';
+    const sortOrder = (searchParams.get('sortOrder') || 'asc') as 'asc' | 'desc';
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
 
     const where: Record<string, unknown> = { tahun };
     if (bulan) where.bulan = bulan;
@@ -30,6 +34,12 @@ export async function GET(request: NextRequest) {
         { keterangan: { contains: search, mode: 'insensitive' } },
       ];
     }
+    if (dateFrom || dateTo) {
+      where.tanggal = {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}),
+      };
+    }
 
     const [entries, total] = await Promise.all([
       prisma.repertorium.findMany({
@@ -40,7 +50,7 @@ export async function GET(request: NextRequest) {
           },
           createdBy: { select: { name: true } },
         },
-        orderBy: { nomorUrut: 'asc' },
+        orderBy: { [sortBy]: sortOrder },
         skip: (page - 1) * limit,
         take: limit,
       }),

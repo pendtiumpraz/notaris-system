@@ -28,6 +28,7 @@ import {
   Stamp,
   BookOpen,
   BookText,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/feature-flags-context';
@@ -40,7 +41,7 @@ interface SidebarItem {
   href: string;
   icon: React.ReactNode;
   roles: UserRole[];
-  featureKey: string;
+  featureKey?: string;
   category: SidebarCategory;
 }
 
@@ -113,6 +114,13 @@ const sidebarItems: SidebarItem[] = [
     icon: <Receipt className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'billing',
+    category: 'keuangan',
+  },
+  {
+    label: 'Tarif Layanan',
+    href: '/admin/service-fees',
+    icon: <DollarSign className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
     category: 'keuangan',
   },
   {
@@ -280,6 +288,7 @@ export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
     }
     if (userRole === 'SUPER_ADMIN') return true;
     if (item.featureKey === '__always__') return true;
+    if (!item.featureKey) return true;
     return isFeatureEnabled(item.featureKey, userRole);
   });
 

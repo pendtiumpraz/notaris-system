@@ -17,6 +17,9 @@ import {
   X,
   Save,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -102,6 +105,10 @@ export default function RepertoriumPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [sortBy, setSortBy] = useState('nomorUrut');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Form state
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -121,6 +128,10 @@ export default function RepertoriumPage() {
       if (filterPPAT) params.set('isPPAT', filterPPAT);
       if (search) params.set('search', search);
       params.set('page', page.toString());
+      params.set('sortBy', sortBy);
+      params.set('sortOrder', sortOrder);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
 
       const res = await fetch(`/api/repertorium?${params}`);
       if (res.ok) {
@@ -135,7 +146,7 @@ export default function RepertoriumPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [tahun, bulan, filterPPAT, search, page]);
+  }, [tahun, bulan, filterPPAT, search, page, sortBy, sortOrder, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchData();
@@ -332,6 +343,75 @@ export default function RepertoriumPage() {
           <option value="false">Notaris</option>
           <option value="true">PPAT</option>
         </select>
+      </div>
+
+      {/* Sort & Date Range */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 whitespace-nowrap">Urutkan:</label>
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-white"
+          >
+            <option value="nomorUrut">No. Urut</option>
+            <option value="tanggal">Tanggal</option>
+            <option value="sifatAkta">Sifat Akta</option>
+          </select>
+          <button
+            onClick={() => {
+              setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+              setPage(1);
+            }}
+            className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white border border-slate-700"
+            title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+          >
+            {sortOrder === 'asc' ? (
+              <ArrowUp className="w-3.5 h-3.5" />
+            ) : (
+              <ArrowDown className="w-3.5 h-3.5" />
+            )}
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 whitespace-nowrap">Dari:</label>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 w-40 bg-slate-800 border-slate-700 text-white text-sm"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 whitespace-nowrap">Sampai:</label>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value);
+              setPage(1);
+            }}
+            className="h-9 w-40 bg-slate-800 border-slate-700 text-white text-sm"
+          />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+              setPage(1);
+            }}
+            className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+          >
+            <X className="w-3 h-3" /> Reset Tanggal
+          </button>
+        )}
       </div>
 
       {/* Table */}

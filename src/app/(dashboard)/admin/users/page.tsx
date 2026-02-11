@@ -270,7 +270,9 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Role</SelectItem>
-                <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                {session?.user?.role === 'SUPER_ADMIN' && (
+                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                )}
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="STAFF">Staff</SelectItem>
                 <SelectItem value="CLIENT">Klien</SelectItem>
@@ -480,9 +482,7 @@ export default function UsersPage() {
                   {session?.user?.role === 'SUPER_ADMIN' && (
                     <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                   )}
-                  {session?.user?.role === 'SUPER_ADMIN' && (
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                  )}
+                  <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="STAFF">Staff</SelectItem>
                   <SelectItem value="CLIENT">Klien</SelectItem>
                 </SelectContent>

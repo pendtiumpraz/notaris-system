@@ -10,10 +10,20 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Plus,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 
 interface KlapperEntry {
   id: string;
@@ -62,6 +72,20 @@ export default function KlapperPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
+  // Manual entry form
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [repertoriums, setRepertoriums] = useState<
+    { id: string; nomorUrut: number; sifatAkta: string }[]
+  >([]);
+  const [formData, setFormData] = useState({
+    namaPenghadap: '',
+    sifatAkta: '',
+    nomorAkta: '',
+    tanggalAkta: '',
+    repertoriumId: '',
+  });
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -91,6 +115,62 @@ export default function KlapperPage() {
     fetchData();
   }, [fetchData]);
 
+  // Fetch repertorium list for reference dropdown
+  useEffect(() => {
+    const fetchRepertoriums = async () => {
+      try {
+        const res = await fetch(`/api/repertorium?tahun=${tahun}&limit=200`);
+        if (res.ok) {
+          const data = await res.json();
+          setRepertoriums(data.data || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchRepertoriums();
+  }, [tahun]);
+
+  const handleSubmitEntry = async () => {
+    if (
+      !formData.namaPenghadap ||
+      !formData.sifatAkta ||
+      !formData.nomorAkta ||
+      !formData.tanggalAkta ||
+      !formData.repertoriumId
+    ) {
+      toast.warning('Semua field wajib diisi');
+      return;
+    }
+    try {
+      setIsSaving(true);
+      const res = await fetch('/api/klapper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        toast.success('Entri klapper berhasil ditambahkan');
+        setIsFormOpen(false);
+        setFormData({
+          namaPenghadap: '',
+          sifatAkta: '',
+          nomorAkta: '',
+          tanggalAkta: '',
+          repertoriumId: '',
+        });
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Gagal menambah entri');
+      }
+    } catch {
+      toast.error('Gagal menambah entri');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -112,19 +192,28 @@ export default function KlapperPage() {
             Indeks alfabetis penghadap akta — Sesuai UU No. 2/2014 tentang Jabatan Notaris
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            const params = new URLSearchParams();
-            params.set('tahun', tahun.toString());
-            if (bulan) params.set('bulan', bulan.toString());
-            window.open(`/api/klapper/export?${params}`, '_blank');
-          }}
-          className="border-slate-700 text-slate-300 hover:text-white"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Export PDF
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Entri
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set('tahun', tahun.toString());
+              if (bulan) params.set('bulan', bulan.toString());
+              window.open(`/api/klapper/export?${params}`, '_blank');
+            }}
+            className="border-slate-700 text-slate-300 hover:text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -309,6 +398,97 @@ export default function KlapperPage() {
           </div>
         </div>
       )}
+
+      {/* Manual Entry Sheet */}
+      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <SheetContent className="bg-slate-900 border-slate-800">
+          <SheetHeader>
+            <SheetTitle className="text-white">Tambah Entri Klapper</SheetTitle>
+            <SheetDescription>Tambahkan entri klapper secara manual</SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-white">Nama Penghadap *</Label>
+              <Input
+                value={formData.namaPenghadap}
+                onChange={(e) => setFormData({ ...formData, namaPenghadap: e.target.value })}
+                className="bg-slate-800 border-slate-700 text-white"
+                placeholder="Nama lengkap penghadap"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white">Referensi Repertorium *</Label>
+              <select
+                value={formData.repertoriumId}
+                onChange={(e) => {
+                  const rep = repertoriums.find((r) => r.id === e.target.value);
+                  setFormData({
+                    ...formData,
+                    repertoriumId: e.target.value,
+                    sifatAkta: rep?.sifatAkta || formData.sifatAkta,
+                    nomorAkta: rep?.nomorUrut?.toString() || formData.nomorAkta,
+                  });
+                }}
+                className="w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-white"
+              >
+                <option value="">Pilih entri repertorium...</option>
+                {repertoriums.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    No. {r.nomorUrut} — {r.sifatAkta}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white">Sifat Akta *</Label>
+              <Input
+                value={formData.sifatAkta}
+                onChange={(e) => setFormData({ ...formData, sifatAkta: e.target.value })}
+                className="bg-slate-800 border-slate-700 text-white"
+                placeholder="Jenis akta"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-white">No. Akta *</Label>
+                <Input
+                  type="number"
+                  value={formData.nomorAkta}
+                  onChange={(e) => setFormData({ ...formData, nomorAkta: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                  min={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-white">Tanggal Akta *</Label>
+                <Input
+                  type="date"
+                  value={formData.tanggalAkta}
+                  onChange={(e) => setFormData({ ...formData, tanggalAkta: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsFormOpen(false)}
+                disabled={isSaving}
+              >
+                Batal
+              </Button>
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                onClick={handleSubmitEntry}
+                disabled={isSaving || !formData.namaPenghadap || !formData.repertoriumId}
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Simpan'}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

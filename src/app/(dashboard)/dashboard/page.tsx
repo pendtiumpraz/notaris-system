@@ -20,9 +20,25 @@ import {
   ClipboardList,
   AlertTriangle,
   Plus,
+  TrendingUp,
+  DollarSign,
+  BookOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
 
 interface DashboardStats {
   totalDocuments: number;
@@ -507,6 +523,78 @@ function AdminDashboard({
   userName: string | undefined;
   isSuperAdmin: boolean;
 }) {
+  // Fetch chart/stats data from stats API
+  const [chartData, setChartData] = useState<{
+    aktaPerBulan: { bulan: number; count: number }[];
+    aktaByJenis: { jenis: string; count: number }[];
+  } | null>(null);
+  const [summaryData, setSummaryData] = useState<{
+    aktaBulanIni: number;
+    totalAktaTahun: number;
+    revenueBulanIni: number;
+    outstandingAmount: number;
+    unpaidCount: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const fetchCharts = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setChartData(data.charts);
+          setSummaryData(data.summary);
+        }
+      } catch (e) {
+        console.error('Failed to fetch chart data:', e);
+      }
+    };
+    fetchCharts();
+  }, []);
+
+  const BULAN_SHORT = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+  const PIE_COLORS = [
+    '#10b981',
+    '#3b82f6',
+    '#8b5cf6',
+    '#f59e0b',
+    '#ef4444',
+    '#06b6d4',
+    '#ec4899',
+    '#84cc16',
+  ];
+
+  const barData =
+    chartData?.aktaPerBulan?.map((d) => ({
+      name: BULAN_SHORT[d.bulan - 1],
+      akta: d.count,
+    })) || [];
+
+  const pieData =
+    chartData?.aktaByJenis?.map((d) => ({
+      name: d.jenis,
+      value: d.count,
+    })) || [];
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+    }).format(n);
   return (
     <div className="space-y-6">
       {/* Greeting */}
@@ -572,6 +660,153 @@ function AdminDashboard({
           label="Pesan"
         />
       </div>
+
+      {/* Notaris Summary Row */}
+      {summaryData && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-emerald-400 uppercase font-medium">
+                  Akta Bulan Ini
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-white">{summaryData.aktaBulanIni}</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Total tahun: {summaryData.totalAktaTahun}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-blue-400" />
+                <span className="text-xs text-blue-400 uppercase font-medium">
+                  Revenue Bulan Ini
+                </span>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {formatCurrency(summaryData.revenueBulanIni)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 border-yellow-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs text-yellow-400 uppercase font-medium">Outstanding</span>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {formatCurrency(summaryData.outstandingAmount)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {summaryData.unpaidCount} tagihan belum lunas
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 border-purple-500/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-purple-400" />
+                <span className="text-xs text-purple-400 uppercase font-medium">Performa</span>
+              </div>
+              <p className="text-2xl font-bold text-white">
+                {summaryData.totalAktaTahun > 0
+                  ? Math.round(summaryData.totalAktaTahun / new Date().getMonth() || 1)
+                  : 0}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">Rata-rata akta/bulan</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Charts Row */}
+      {chartData && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Bar Chart - Akta per Bulan */}
+          <Card className="bg-slate-900 border-slate-800 col-span-1 lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-emerald-400" />
+                Jumlah Akta per Bulan ({new Date().getFullYear()})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} />
+                    <YAxis stroke="#94a3b8" fontSize={12} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: 8,
+                      }}
+                      labelStyle={{ color: '#fff' }}
+                      itemStyle={{ color: '#10b981' }}
+                    />
+                    <Bar dataKey="akta" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pie Chart - Jenis Akta */}
+          <Card className="bg-slate-900 border-slate-800">
+            <CardHeader>
+              <CardTitle className="text-white text-sm">Breakdown Jenis Akta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pieData.length === 0 ? (
+                <div className="flex items-center justify-center h-[280px] text-slate-500">
+                  <p className="text-sm">Belum ada data</p>
+                </div>
+              ) : (
+                <div className="h-[280px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="45%"
+                        innerRadius={50}
+                        outerRadius={80}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {pieData.map((_entry, index) => (
+                          <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Legend
+                        verticalAlign="bottom"
+                        height={36}
+                        iconType="circle"
+                        iconSize={8}
+                        formatter={(value: string) => (
+                          <span className="text-slate-300 text-xs">{value}</span>
+                        )}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1e293b',
+                          border: '1px solid #334155',
+                          borderRadius: 8,
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
