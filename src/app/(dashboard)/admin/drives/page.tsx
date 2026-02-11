@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { showConfirm } from '@/lib/swal';
 import {
   HardDrive,
   Plus,
@@ -77,7 +78,12 @@ export default function DrivesPage() {
   };
 
   const handleDisconnect = async (id: string) => {
-    if (!confirm('Yakin ingin memutuskan koneksi Google Drive ini?')) return;
+    const confirmed = await showConfirm(
+      'Putuskan Koneksi?',
+      'Yakin ingin memutuskan koneksi Google Drive ini?',
+      'Ya, Putuskan'
+    );
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/drives/${id}`, { method: 'DELETE' });

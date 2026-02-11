@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPS Specifications - Portal Klien Notaris</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Progress Bar -->
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav-controls">
+        <button class="nav-btn" id="prevBtn" aria-label="Previous slide">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+        <span class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">10</span>
+        </span>
+        <button class="nav-btn" id="nextBtn" aria-label="Next slide">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6"/>
+            </svg>
+        </button>
+    </nav>
+
+    <!-- Slides Container -->
+    <div class="slides-container" id="slidesContainer">
+        
+        <!-- Slide 1: Title -->
+        <section class="slide active" data-slide="1">
+            <div class="slide-content title-slide">
+                <div class="floating-icons">
+                    <span class="icon">🖥️</span>
+                    <span class="icon">☁️</span>
+                    <span class="icon">⚡</span>
+                    <span class="icon">🔒</span>
+                </div>
+                <h1 class="main-title">
+                    <span class="gradient-text">Spesifikasi VPS</span>
+                </h1>
+                <h2 class="subtitle">Portal Klien Notaris</h2>
+                <p class="tagline">Rekomendasi Infrastruktur Server untuk Aplikasi Anda</p>
+                <div class="date-badge">
+                    <span>📅 Februari 2026</span>
+                </div>
+                <div class="scroll-hint">
+                    <span>Tekan → atau klik untuk lanjut</span>
+                    <div class="arrow-down"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 2: Quick Summary -->
+        <section class="slide" data-slide="2">
+            <div class="slide-content">
+                <h2 class="slide-title">📋 Ringkasan Cepat</h2>
+                <div class="specs-grid">
+                    <div class="spec-card bronze">
+                        <div class="tier-badge">🥉 Minimum</div>
+                        <div class="spec-value">2GB</div>
+                        <div class="spec-label">RAM</div>
+                        <div class="spec-details">
+                            <span>2 Core CPU</span>
+                            <span>40GB SSD</span>
+                        </div>
+                        <div class="price">Rp 160rb/bln</div>
+                        <div class="capacity">1 Notaris • 100 Klien</div>
+                    </div>
+                    <div class="spec-card silver featured">
+                        <div class="recommended-badge">⭐ Recommended</div>
+                        <div class="tier-badge">🥈 Standard</div>
+                        <div class="spec-value">4GB</div>
+                        <div class="spec-label">RAM</div>
+                        <div class="spec-details">
+                            <span>3 Core CPU</span>
+                            <span>80GB SSD</span>
+                        </div>
+                        <div class="price">Rp 320rb/bln</div>
+                        <div class="capacity">3-5 Notaris • 500 Klien</div>
+                    </div>
+                    <div class="spec-card gold">
+                        <div class="tier-badge">🥇 Premium</div>
+                        <div class="spec-value">8GB</div>
+                        <div class="spec-label">RAM</div>
+                        <div class="spec-details">
+                            <span>4 Core CPU</span>
+                            <span>160GB SSD</span>
+                        </div>
+                        <div class="price">Rp 600rb/bln</div>
+                        <div class="capacity">10+ Notaris • 1000+ Klien</div>
+                    </div>
+                </div>
+                <p class="footnote">*Harga berdasarkan Domainesia.com dengan promo 50%</p>
+            </div>
+        </section>
+
+        <!-- Slide 3: Tech Stack -->
+        <section class="slide" data-slide="3">
+            <div class="slide-content">
+                <h2 class="slide-title">🔧 Tech Stack</h2>
+                <div class="tech-grid">
+                    <div class="tech-item" data-aos="fade-up">
+                        <div class="tech-icon">⚛️</div>
+                        <div class="tech-name">Next.js 16</div>
+                        <div class="tech-desc">React 19 Framework</div>
+                        <div class="tech-ram">512MB - 1GB RAM</div>
+                    </div>
+                    <div class="tech-item" data-aos="fade-up" data-aos-delay="100">
+                        <div class="tech-icon">🐘</div>
+                        <div class="tech-name">PostgreSQL</div>
+                        <div class="tech-desc">Database Engine</div>
+                        <div class="tech-ram">512MB - 1GB RAM</div>
+                    </div>
+                    <div class="tech-item" data-aos="fade-up" data-aos-delay="200">
+                        <div class="tech-icon">🟢</div>
+                        <div class="tech-name">Node.js</div>
+                        <div class="tech-desc">Runtime Environment</div>
+                        <div class="tech-ram">256MB - 512MB RAM</div>
+                    </div>
+                    <div class="tech-item" data-aos="fade-up" data-aos-delay="300">
+                        <div class="tech-icon">🔄</div>
+                        <div class="tech-name">NGINX</div>
+                        <div class="tech-desc">Reverse Proxy</div>
+                        <div class="tech-ram">50MB - 100MB RAM</div>
+                    </div>
+                </div>
+                <div class="total-box">
+                    <div class="total-label">Total Kebutuhan Minimum</div>
+                    <div class="total-value">~1.5GB - 3GB RAM</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: Tier 1 - Minimum -->
+        <section class="slide" data-slide="4">
+            <div class="slide-content">
+                <h2 class="slide-title">🥉 Tier 1: Minimum</h2>
+                <div class="tier-detail">
+                    <div class="tier-specs">
+                        <div class="spec-row">
+                            <span class="spec-icon">💾</span>
+                            <span class="spec-name">RAM</span>
+                            <span class="spec-val">2GB</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">⚡</span>
+                            <span class="spec-name">CPU</span>
+                            <span class="spec-val">2 Core</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">💿</span>
+                            <span class="spec-name">Storage</span>
+                            <span class="spec-val">40GB SSD</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">🌐</span>
+                            <span class="spec-name">Bandwidth</span>
+                            <span class="spec-val">1TB/bulan</span>
+                        </div>
+                    </div>
+                    <div class="tier-info">
+                        <h3>Kapasitas</h3>
+                        <ul>
+                            <li>1 Tenant Notaris</li>
+                            <li>~100 Klien aktif</li>
+                            <li>~1.000 dokumen</li>
+                        </ul>
+                        <h3>Cocok Untuk</h3>
+                        <ul>
+                            <li>Testing & Development</li>
+                            <li>Notaris perorangan</li>
+                            <li>Pilot project</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="price-tag bronze-bg">
+                    <span class="price-label">Mulai dari</span>
+                    <span class="price-amount">Rp 160.000</span>
+                    <span class="price-period">/bulan</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: Tier 2 - Standard -->
+        <section class="slide" data-slide="5">
+            <div class="slide-content">
+                <h2 class="slide-title">🥈 Tier 2: Standard <span class="badge-recommended">⭐ Recommended</span></h2>
+                <div class="tier-detail">
+                    <div class="tier-specs highlight">
+                        <div class="spec-row">
+                            <span class="spec-icon">💾</span>
+                            <span class="spec-name">RAM</span>
+                            <span class="spec-val">4GB</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">⚡</span>
+                            <span class="spec-name">CPU</span>
+                            <span class="spec-val">3 Core</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">💿</span>
+                            <span class="spec-name">Storage</span>
+                            <span class="spec-val">80GB SSD</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">🌐</span>
+                            <span class="spec-name">Bandwidth</span>
+                            <span class="spec-val">2TB/bulan</span>
+                        </div>
+                    </div>
+                    <div class="tier-info">
+                        <h3>Kapasitas</h3>
+                        <ul>
+                            <li>3-5 Tenant Notaris</li>
+                            <li>~500 Klien aktif</li>
+                            <li>~5.000 dokumen</li>
+                        </ul>
+                        <h3>Cocok Untuk</h3>
+                        <ul>
+                            <li>Multi-tenant production</li>
+                            <li>Kantor notaris menengah</li>
+                            <li>Agen dengan beberapa klien</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="price-tag silver-bg">
+                    <span class="price-label">Mulai dari</span>
+                    <span class="price-amount">Rp 320.000</span>
+                    <span class="price-period">/bulan</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 6: Tier 3 - Premium -->
+        <section class="slide" data-slide="6">
+            <div class="slide-content">
+                <h2 class="slide-title">🥇 Tier 3: Premium</h2>
+                <div class="tier-detail">
+                    <div class="tier-specs gold-border">
+                        <div class="spec-row">
+                            <span class="spec-icon">💾</span>
+                            <span class="spec-name">RAM</span>
+                            <span class="spec-val">8GB</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">⚡</span>
+                            <span class="spec-name">CPU</span>
+                            <span class="spec-val">4 Core</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">💿</span>
+                            <span class="spec-name">Storage</span>
+                            <span class="spec-val">160GB SSD</span>
+                        </div>
+                        <div class="spec-row">
+                            <span class="spec-icon">🌐</span>
+                            <span class="spec-name">Bandwidth</span>
+                            <span class="spec-val">4TB/bulan</span>
+                        </div>
+                    </div>
+                    <div class="tier-info">
+                        <h3>Kapasitas</h3>
+                        <ul>
+                            <li>10+ Tenant Notaris</li>
+                            <li>~1.000+ Klien aktif</li>
+                            <li>~10.000+ dokumen</li>
+                        </ul>
+                        <h3>Cocok Untuk</h3>
+                        <ul>
+                            <li>Enterprise deployment</li>
+                            <li>Multi-cabang notaris besar</li>
+                            <li>Agen reseller skala besar</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="price-tag gold-bg">
+                    <span class="price-label">Mulai dari</span>
+                    <span class="price-amount">Rp 600.000</span>
+                    <span class="price-period">/bulan</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 7: Storage Info -->
+        <section class="slide" data-slide="7">
+            <div class="slide-content">
+                <h2 class="slide-title">💾 Catatan Storage</h2>
+                <div class="storage-feature">
+                    <div class="google-drive-card">
+                        <div class="drive-icon">
+                            <svg viewBox="0 0 87.3 78" width="80">
+                                <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                                <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+                                <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+                                <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                                <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                                <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                            </svg>
+                        </div>
+                        <h3>Google Drive Integration</h3>
+                        <p class="drive-desc">Dokumen disimpan di Google Drive</p>
+                        <div class="drive-benefit">
+                            <span class="benefit-tag">✅ GRATIS 15GB/akun</span>
+                            <span class="benefit-tag">✅ Multiple akun</span>
+                            <span class="benefit-tag">✅ Auto backup</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="storage-usage">
+                    <h3>Penggunaan Storage VPS</h3>
+                    <div class="usage-bars">
+                        <div class="usage-item">
+                            <span class="usage-label">Operating System</span>
+                            <div class="usage-bar"><div class="usage-fill" style="width: 25%"></div></div>
+                            <span class="usage-size">5-10GB</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">PostgreSQL Database</span>
+                            <div class="usage-bar"><div class="usage-fill" style="width: 12%"></div></div>
+                            <span class="usage-size">1-5GB</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">Next.js Application</span>
+                            <div class="usage-bar"><div class="usage-fill" style="width: 5%"></div></div>
+                            <span class="usage-size">500MB-1GB</span>
+                        </div>
+                        <div class="usage-item">
+                            <span class="usage-label">Logs & Cache</span>
+                            <div class="usage-bar"><div class="usage-fill" style="width: 12%"></div></div>
+                            <span class="usage-size">2-5GB</span>
+                        </div>
+                    </div>
+                    <div class="storage-conclusion">
+                        <span class="conclusion-icon">💡</span>
+                        <span>VPS 40GB SSD sudah lebih dari cukup!</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: Security -->
+        <section class="slide" data-slide="8">
+            <div class="slide-content">
+                <h2 class="slide-title">🔒 Security Checklist</h2>
+                <div class="security-grid">
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>Firewall (UFW)</h4>
+                            <p>Configured with proper rules</p>
+                        </div>
+                    </div>
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>SSH Key Authentication</h4>
+                            <p>Password login disabled</p>
+                        </div>
+                    </div>
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>Fail2ban</h4>
+                            <p>Brute force protection</p>
+                        </div>
+                    </div>
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>PostgreSQL Internal</h4>
+                            <p>Not exposed to public</p>
+                        </div>
+                    </div>
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>HTTPS / SSL</h4>
+                            <p>Let's Encrypt certificate</p>
+                        </div>
+                    </div>
+                    <div class="security-item checked">
+                        <div class="check-icon">✓</div>
+                        <div class="security-text">
+                            <h4>Auto Backup</h4>
+                            <p>Daily automated backups</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 9: VPS Providers -->
+        <section class="slide" data-slide="9">
+            <div class="slide-content">
+                <h2 class="slide-title">🌐 Provider VPS Lokal</h2>
+                <div class="providers-grid">
+                    <div class="provider-card featured">
+                        <div class="provider-badge">⭐ Recommended</div>
+                        <div class="provider-logo">🏠</div>
+                        <h3>Domainesia</h3>
+                        <p class="provider-url">domainesia.com</p>
+                        <p class="provider-benefit">Promo 50%, support bagus</p>
+                        <div class="provider-price">
+                            <span>Dari</span>
+                            <strong>Rp 80rb</strong>
+                            <span>/bln</span>
+                        </div>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">🏢</div>
+                        <h3>Niagahoster</h3>
+                        <p class="provider-url">niagahoster.co.id</p>
+                        <p class="provider-benefit">Interface mudah</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">🛡️</div>
+                        <h3>Dewaweb</h3>
+                        <p class="provider-url">dewaweb.com</p>
+                        <p class="provider-benefit">Security focused</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">☁️</div>
+                        <h3>IDCloudHost</h3>
+                        <p class="provider-url">idcloudhost.com</p>
+                        <p class="provider-benefit">Harga kompetitif</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 10: Conclusion -->
+        <section class="slide" data-slide="10">
+            <div class="slide-content conclusion-slide">
+                <h2 class="slide-title">✅ Rekomendasi Final</h2>
+                <div class="final-recommendation">
+                    <div class="recommendation-box">
+                        <div class="rec-header">
+                            <span class="rec-icon">📦</span>
+                            <span class="rec-title">Untuk Memulai</span>
+                        </div>
+                        <div class="rec-specs">
+                            <div class="rec-main">
+                                <span class="rec-value">4GB RAM</span>
+                                <span class="rec-divider">/</span>
+                                <span class="rec-value">3 Core</span>
+                                <span class="rec-divider">/</span>
+                                <span class="rec-value">80GB SSD</span>
+                            </div>
+                            <div class="rec-details">
+                                <span>Provider: Domainesia</span>
+                                <span>OS: Ubuntu 22.04 LTS</span>
+                            </div>
+                        </div>
+                        <div class="rec-price">
+                            <span class="rec-price-label">Harga</span>
+                            <span class="rec-price-value">Rp 320.000</span>
+                            <span class="rec-price-period">/bulan</span>
+                        </div>
+                    </div>
+                    <div class="why-section">
+                        <h3>Kenapa 4GB RAM?</h3>
+                        <div class="why-grid">
+                            <div class="why-item">
+                                <span class="why-num">1</span>
+                                <span class="why-text"><strong>Headroom</strong> - Ruang untuk scaling</span>
+                            </div>
+                            <div class="why-item">
+                                <span class="why-num">2</span>
+                                <span class="why-text"><strong>Reliability</strong> - Stabil saat traffic spike</span>
+                            </div>
+                            <div class="why-item">
+                                <span class="why-num">3</span>
+                                <span class="why-text"><strong>Multi-tenant</strong> - Bisa onboard 3-5 klien</span>
+                            </div>
+                            <div class="why-item">
+                                <span class="why-num">4</span>
+                                <span class="why-text"><strong>Cost-effective</strong> - Harga reasonable</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cta-section">
+                    <p class="cta-text">Siap untuk deploy?</p>
+                    <a href="https://www.domainesia.com/cloud-vps/" target="_blank" class="cta-button">
+                        🚀 Mulai Sekarang
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div class="shortcuts-hint" id="shortcutsHint">
+        <span>← →</span> Navigate
+        <span>F</span> Fullscreen
+        <span>Home</span> First
+        <span>End</span> Last
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

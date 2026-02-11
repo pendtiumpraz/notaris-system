@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Settings, Save, Loader2, Globe, Phone, Mail, MapPin, Clock, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,13 +62,13 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        alert('Pengaturan berhasil disimpan');
+        toast.success('Pengaturan berhasil disimpan');
       } else {
-        alert('Gagal menyimpan pengaturan');
+        toast.error('Gagal menyimpan pengaturan');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Gagal menyimpan pengaturan');
+      toast.error('Gagal menyimpan pengaturan');
     } finally {
       setSaving(false);
     }

@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { showConfirm } from '@/lib/swal';
 import {
   Calendar,
   ArrowLeft,
@@ -107,7 +109,7 @@ export default function AppointmentDetailPage({ params }: { params: Promise<{ id
         fetchAppointment();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal memperbarui jadwal');
+        toast.error(data.error || 'Gagal memperbarui jadwal');
       }
     } catch (error) {
       console.error('Error updating appointment:', error);
@@ -117,7 +119,12 @@ export default function AppointmentDetailPage({ params }: { params: Promise<{ id
   };
 
   const handleCancel = async () => {
-    if (!confirm('Apakah Anda yakin ingin membatalkan jadwal ini?')) return;
+    const confirmed = await showConfirm(
+      'Batalkan Jadwal?',
+      'Apakah Anda yakin ingin membatalkan jadwal ini?',
+      'Ya, Batalkan'
+    );
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/appointments/${id}`, {

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
+import { showDeleteConfirm } from '@/lib/swal';
 import {
   Settings,
   HelpCircle,
@@ -129,11 +131,11 @@ export default function ContentManagementPage() {
         body: JSON.stringify(settings),
       });
       if (res.ok) {
-        alert('Pengaturan berhasil disimpan');
+        toast.success('Pengaturan berhasil disimpan');
       }
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Gagal menyimpan pengaturan');
+      toast.error('Gagal menyimpan pengaturan');
     } finally {
       setIsSaving(false);
     }
@@ -152,7 +154,8 @@ export default function ContentManagementPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus item ini?')) return;
+    const confirmed = await showDeleteConfirm('item ini');
+    if (!confirmed) return;
 
     const endpoint = `/api/admin/${activeTab}/${id}`;
     try {

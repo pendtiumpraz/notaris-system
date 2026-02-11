@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import { showDeleteConfirm } from '@/lib/swal';
 import {
   FileText,
   Plus,
@@ -43,12 +45,13 @@ interface Document {
   createdAt: string;
   client: { user: { name: string } };
   staff: { user: { name: string } } | null;
-  documentType: { name: string };
+  documentType: { id: string; name: string };
 }
 
 interface DocumentType {
   id: string;
   name: string;
+  requiredDocuments: string[] | null;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -95,6 +98,8 @@ export default function DocumentsPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(userRole || '');
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole || '');
+  const isClient = userRole === 'CLIENT';
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
@@ -102,6 +107,12 @@ export default function DocumentsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDocuments, setTotalDocuments] = useState(0);
+  const [selectedTypeRequirements, setSelectedTypeRequirements] = useState<string[]>([]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [sheetMode, setSheetMode] = useState<'create' | 'edit' | 'view'>('create');
@@ -113,18 +124,22 @@ export default function DocumentsPage() {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       if (statusFilter) params.set('status', statusFilter);
+      params.set('page', currentPage.toString());
+      params.set('limit', '20');
 
       const res = await fetch(`/api/documents?${params}`);
       if (res.ok) {
         const data = await res.json();
         setDocuments(data.data || []);
+        setTotalPages(data.meta?.totalPages || 1);
+        setTotalDocuments(data.meta?.total || 0);
       }
     } catch (error) {
       console.error('Failed to fetch documents:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, currentPage]);
 
   const fetchDocumentTypes = useCallback(async () => {
     try {
@@ -146,6 +161,8 @@ export default function DocumentsPage() {
   const openCreateSheet = () => {
     setSheetMode('create');
     setSelectedDocument(null);
+    setPendingFiles([]);
+    setUploadProgress('');
     setIsSheetOpen(true);
   };
 
@@ -162,16 +179,36 @@ export default function DocumentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus dokumen ini?')) return;
+    const confirmed = await showDeleteConfirm('dokumen ini');
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchDocuments();
+        toast.success('Dokumen berhasil dihapus');
       }
     } catch (error) {
       console.error('Failed to delete document:', error);
+      toast.error('Gagal menghapus dokumen');
     }
+  };
+
+  const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setPendingFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemovePendingFile = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const handleSave = async (formData: FormData) => {
@@ -182,7 +219,7 @@ export default function DocumentsPage() {
 
     const data: Record<string, unknown> = {};
     formData.forEach((value, key) => {
-      if (value) data[key] = value;
+      if (key !== 'files' && value) data[key] = value;
     });
 
     try {
@@ -192,6 +229,29 @@ export default function DocumentsPage() {
         body: JSON.stringify(data),
       });
       if (res.ok) {
+        const doc = await res.json();
+
+        // Upload pending files if any
+        if (pendingFiles.length > 0) {
+          const docId = doc.id || selectedDocument?.id;
+          for (let i = 0; i < pendingFiles.length; i++) {
+            setUploadProgress(`Mengupload file ${i + 1}/${pendingFiles.length}...`);
+            const uploadData = new FormData();
+            uploadData.append('file', pendingFiles[i]);
+            uploadData.append('documentId', docId);
+            try {
+              await fetch('/api/drive/upload', {
+                method: 'POST',
+                body: uploadData,
+              });
+            } catch (uploadError) {
+              console.error(`Failed to upload file ${pendingFiles[i].name}:`, uploadError);
+            }
+          }
+        }
+
+        setPendingFiles([]);
+        setUploadProgress('');
         setIsSheetOpen(false);
         fetchDocuments();
       }
@@ -199,16 +259,14 @@ export default function DocumentsPage() {
       console.error('Failed to save document:', error);
     } finally {
       setIsSaving(false);
+      setUploadProgress('');
     }
   };
 
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch =
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.documentNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !statusFilter || doc.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
   return (
     <div className="space-y-6">
@@ -219,7 +277,7 @@ export default function DocumentsPage() {
         </div>
         <Button onClick={openCreateSheet} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="w-4 h-4 mr-2" />
-          Buat Dokumen
+          {isClient ? 'Ajukan Dokumen' : 'Buat Dokumen'}
         </Button>
       </div>
 
@@ -258,14 +316,14 @@ export default function DocumentsPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
             </div>
-          ) : filteredDocuments.length === 0 ? (
+          ) : documents.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>Belum ada dokumen</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-800">
-              {filteredDocuments.map((doc) => (
+              {documents.map((doc) => (
                 <div key={doc.id} className="p-4 hover:bg-slate-800/50 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -309,14 +367,16 @@ export default function DocumentsPage() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(doc.id)}
-                            className="text-slate-400 hover:text-red-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(doc.id)}
+                              className="text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>
@@ -327,6 +387,64 @@ export default function DocumentsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            Menampilkan {documents.length} dari {totalDocuments} dokumen
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="border-slate-700 text-slate-400"
+            >
+              Sebelumnya
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let page: number;
+                if (totalPages <= 5) {
+                  page = i + 1;
+                } else if (currentPage <= 3) {
+                  page = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  page = totalPages - 4 + i;
+                } else {
+                  page = currentPage - 2 + i;
+                }
+                return (
+                  <Button
+                    key={page}
+                    variant={currentPage === page ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={
+                      currentPage === page
+                        ? 'bg-emerald-600 hover:bg-emerald-700 min-w-[36px]'
+                        : 'border-slate-700 text-slate-400 min-w-[36px]'
+                    }
+                  >
+                    {page}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="border-slate-700 text-slate-400"
+            >
+              Selanjutnya
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Sheet */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -420,9 +538,15 @@ export default function DocumentsPage() {
                 <Label className="text-slate-300">Jenis Dokumen</Label>
                 <select
                   name="documentTypeId"
-                  defaultValue={selectedDocument?.documentType?.name || ''}
+                  defaultValue={selectedDocument?.documentType?.id || ''}
                   required
                   className="w-full h-10 rounded-lg border border-slate-700 bg-slate-800 px-3 text-white"
+                  onChange={(e) => {
+                    const selected = documentTypes.find((t) => t.id === e.target.value);
+                    setSelectedTypeRequirements(
+                      Array.isArray(selected?.requiredDocuments) ? selected.requiredDocuments : []
+                    );
+                  }}
                 >
                   <option value="">Pilih Jenis</option>
                   {documentTypes.map((type) => (
@@ -432,6 +556,24 @@ export default function DocumentsPage() {
                   ))}
                 </select>
               </div>
+              {/* Required Documents Checklist */}
+              {selectedTypeRequirements.length > 0 && (
+                <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                  <p className="text-xs font-medium text-emerald-400 mb-2">
+                    📋 Dokumen yang harus disiapkan:
+                  </p>
+                  <ul className="space-y-1.5">
+                    {selectedTypeRequirements.map((req, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm text-slate-300">
+                        <div className="w-4 h-4 rounded border border-slate-600 flex items-center justify-center shrink-0">
+                          <CheckCircle className="w-3 h-3 text-slate-500" />
+                        </div>
+                        {req}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label className="text-slate-300">Deskripsi</Label>
                 <textarea
@@ -484,6 +626,50 @@ export default function DocumentsPage() {
                 </>
               )}
 
+              {/* File Upload Section */}
+              <div className="space-y-2">
+                <Label className="text-slate-300">Lampiran Dokumen</Label>
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer hover:border-emerald-500/50 hover:bg-slate-800/50 transition-colors">
+                  <div className="flex flex-col items-center justify-center">
+                    <Upload className="w-6 h-6 text-slate-400 mb-1" />
+                    <p className="text-sm text-slate-400">Klik untuk upload file</p>
+                    <p className="text-xs text-slate-500">PDF, DOC, JPG, PNG (Max 10MB)</p>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                    onChange={handleAddFiles}
+                  />
+                </label>
+                {pendingFiles.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {pendingFiles.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="flex items-center justify-between p-2 rounded-lg bg-slate-800/50"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                          <span className="text-sm text-white truncate">{file.name}</span>
+                          <span className="text-xs text-slate-500 shrink-0">
+                            {formatFileSize(file.size)}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePendingFile(index)}
+                          className="p-1 text-slate-400 hover:text-red-400 shrink-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <SheetFooter className="pt-4">
                 <Button
                   type="button"
@@ -504,7 +690,7 @@ export default function DocumentsPage() {
                   ) : (
                     <Save className="w-4 h-4 mr-2" />
                   )}
-                  Simpan
+                  {uploadProgress || 'Simpan'}
                 </Button>
               </SheetFooter>
             </form>

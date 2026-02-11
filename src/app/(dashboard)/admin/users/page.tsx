@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import {
   Users,
   Plus,
@@ -196,11 +197,11 @@ export default function UsersPage() {
         fetchUsers();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to save user');
+        toast.error(data.error || 'Gagal menyimpan pengguna');
       }
     } catch (error) {
       console.error('Error saving user:', error);
-      alert('Failed to save user');
+      toast.error('Gagal menyimpan pengguna');
     } finally {
       setSaving(false);
     }
@@ -220,11 +221,11 @@ export default function UsersPage() {
         fetchUsers();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to delete user');
+        toast.error(data.error || 'Gagal menghapus pengguna');
       }
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert('Failed to delete user');
+      toast.error('Gagal menghapus pengguna');
     }
   };
 

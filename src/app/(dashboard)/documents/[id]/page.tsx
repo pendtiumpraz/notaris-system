@@ -3,6 +3,14 @@
 import { useState, useEffect, use } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  showAIProgress,
+  closeAIProgress,
+  showAISuccess,
+  showAIError,
+  showDeleteConfirm,
+} from '@/lib/swal';
 import {
   FileText,
   ArrowLeft,
@@ -18,6 +26,9 @@ import {
   AlertCircle,
   File,
   Eye,
+  PenLine,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -101,12 +112,17 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const { data: session } = useSession();
   const router = useRouter();
+  const userRole = (session?.user as { role?: string })?.role || '';
+  const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(userRole);
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
   const [document, setDocument] = useState<Document | null>(null);
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [formData, setFormData] = useState({
     status: '',
     notes: '',
@@ -168,11 +184,11 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
         fetchFiles();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal mengupload file');
+        toast.error(data.error || 'Gagal mengupload file');
       }
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Gagal mengupload file');
+      toast.error('Gagal mengupload file');
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -180,7 +196,8 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
   };
 
   const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Hapus file ini?')) return;
+    const confirmed = await showDeleteConfirm('file ini');
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/drive/files/${fileId}`, {
@@ -198,7 +215,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
     try {
       setUpdating(true);
       const res = await fetch(`/api/documents/${id}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
@@ -208,7 +225,7 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
         setEditMode(false);
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal memperbarui dokumen');
+        toast.error(data.error || 'Gagal memperbarui dokumen');
       }
     } catch (error) {
       console.error('Error updating document:', error);
@@ -224,7 +241,6 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
   };
 
   const getStatusIndex = (status: string) => statusOrder.indexOf(status);
-  const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(session?.user?.role || '');
 
   if (loading) {
     return (
@@ -265,6 +281,14 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-slate-400">{document.documentNumber}</p>
         </div>
         <div className="flex items-center gap-2">
+          {isStaffOrAdmin && (
+            <Link href={`/documents/${id}/editor`}>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <PenLine className="w-4 h-4 mr-2" />
+                Editor Dokumen
+              </Button>
+            </Link>
+          )}
           <span
             className={`px-3 py-1 text-sm rounded-full ${statusConfig[document.status]?.color}`}
           >
@@ -330,6 +354,93 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
             </CardContent>
           </Card>
 
+          {/* AI Summary */}
+          <Card className="bg-slate-900 border-slate-800">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                Ringkasan AI
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setAiSummaryLoading(true);
+                  setAiSummary('');
+                  showAIProgress('Ringkasan Dokumen');
+                  try {
+                    const contentRes = await fetch(`/api/documents/${id}/content`);
+                    const contentData = await contentRes.json();
+                    const docContent = contentData.content || '';
+                    if (!docContent) {
+                      closeAIProgress();
+                      setAiSummary(
+                        'Dokumen belum memiliki konten. Buka Editor untuk menulis konten.'
+                      );
+                      setAiSummaryLoading(false);
+                      return;
+                    }
+                    const res = await fetch('/api/documents/ai', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        action: 'summarize',
+                        documentType: document.documentType?.name || 'Umum',
+                        title: document.title,
+                        content: docContent,
+                        documentId: id,
+                      }),
+                    });
+                    const data = await res.json();
+                    closeAIProgress();
+                    setAiSummary(data.analysis || data.error || 'Gagal memuat ringkasan');
+                    if (data.success) {
+                      await showAISuccess(
+                        'Ringkasan',
+                        `Selesai dalam ${((data.durationMs || 0) / 1000).toFixed(1)} detik`
+                      );
+                      toast.success('Ringkasan AI berhasil di-generate');
+                    } else {
+                      await showAIError('Ringkasan', data.error);
+                    }
+                  } catch {
+                    closeAIProgress();
+                    setAiSummary('Gagal menghubungi AI. Periksa konfigurasi AI Settings.');
+                    await showAIError('Ringkasan', 'Gagal menghubungi AI');
+                  } finally {
+                    setAiSummaryLoading(false);
+                  }
+                }}
+                disabled={aiSummaryLoading}
+                className="border-purple-600/50 text-purple-400 hover:text-purple-300"
+              >
+                {aiSummaryLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <BookOpen className="w-4 h-4 mr-2" />
+                )}
+                {aiSummary ? 'Refresh' : 'Generate'}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {aiSummaryLoading ? (
+                <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>AI sedang menganalisis dokumen...</span>
+                </div>
+              ) : aiSummary ? (
+                <div
+                  className="prose prose-sm prose-invert max-w-none text-slate-300"
+                  dangerouslySetInnerHTML={{ __html: aiSummary }}
+                />
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Klik &quot;Generate&quot; untuk membuat ringkasan otomatis dari dokumen ini.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Files */}
           <Card className="bg-slate-900 border-slate-800">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -382,22 +493,33 @@ export default function DocumentDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <a
+                          href={`/api/drive/files/${file.id}/download`}
+                          className="p-2 text-slate-400 hover:text-emerald-400 transition-colors"
+                          title="Download"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
                         {file.webViewLink && (
                           <a
                             href={file.webViewLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-2 text-slate-400 hover:text-white"
+                            className="p-2 text-slate-400 hover:text-white transition-colors"
+                            title="Lihat di Drive"
                           >
                             <Eye className="w-4 h-4" />
                           </a>
                         )}
-                        <button
-                          onClick={() => handleDeleteFile(file.id)}
-                          className="p-2 text-red-400 hover:text-red-300"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isStaffOrAdmin && (
+                          <button
+                            onClick={() => handleDeleteFile(file.id)}
+                            className="p-2 text-red-400 hover:text-red-300 transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

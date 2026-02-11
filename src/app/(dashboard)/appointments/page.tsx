@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
+import { showConfirm } from '@/lib/swal';
 import {
   Calendar,
   Plus,
@@ -81,6 +83,8 @@ export default function AppointmentsPage() {
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(userRole || '');
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole || '');
+  const isClient = userRole === 'CLIENT';
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -142,7 +146,12 @@ export default function AppointmentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin membatalkan janji temu ini?')) return;
+    const confirmed = await showConfirm(
+      'Batalkan Janji?',
+      'Yakin ingin membatalkan janji temu ini?',
+      'Ya, Batalkan'
+    );
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
@@ -215,7 +224,7 @@ export default function AppointmentsPage() {
         </div>
         <Button onClick={openCreateSheet} className="bg-emerald-600 hover:bg-emerald-700">
           <Plus className="w-4 h-4 mr-2" />
-          Buat Janji Temu
+          {isClient ? 'Buat Jadwal' : 'Buat Janji Temu'}
         </Button>
       </div>
 
@@ -290,25 +299,38 @@ export default function AppointmentsPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {(isStaffOrAdmin || appt.status === 'PENDING') && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditSheet(appt)}
-                                className="text-slate-400 hover:text-white"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(appt.id)}
-                                className="text-slate-400 hover:text-red-400"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
+                          {/* Staff/Admin can edit any appointment */}
+                          {isStaffOrAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditSheet(appt)}
+                              className="text-slate-400 hover:text-white"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {/* Client can only cancel their own pending appointments */}
+                          {isClient && appt.status === 'PENDING' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(appt.id)}
+                              className="text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {/* Admin can cancel/delete any appointment */}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(appt.id)}
+                              className="text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { createAuditLog, getClientIp } from '@/lib/audit-log';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -127,7 +128,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       include: {
         client: { include: { user: { select: { name: true } } } },
         staff: { include: { user: { select: { name: true } } } },
-        documentType: { select: { name: true } },
+        documentType: { select: { id: true, name: true } },
       },
     });
 
@@ -142,6 +143,16 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         },
       });
     }
+
+    // Audit log
+    await createAuditLog({
+      userId: session.user.id,
+      action: data.status && data.status !== existingDoc.status ? 'STATUS_CHANGE' : 'UPDATE',
+      entityType: 'DOCUMENT',
+      entityId: id,
+      details: { changes: updateData, previousStatus: existingDoc.status },
+      ipAddress: getClientIp(request),
+    });
 
     return NextResponse.json(document);
   } catch (error) {
@@ -163,6 +174,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await prisma.document.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+
+    // Audit log
+    await createAuditLog({
+      userId: session.user.id,
+      action: 'DELETE',
+      entityType: 'DOCUMENT',
+      entityId: id,
+      ipAddress: getClientIp(request),
     });
 
     return NextResponse.json({ success: true });

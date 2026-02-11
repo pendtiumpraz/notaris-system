@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateDocumentNumber } from '@/lib/utils';
+import { createAuditLog, getClientIp } from '@/lib/audit-log';
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
         include: {
           client: { include: { user: { select: { name: true } } } },
           staff: { include: { user: { select: { name: true } } } },
-          documentType: { select: { name: true } },
+          documentType: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
       },
       include: {
         client: { include: { user: { select: { name: true } } } },
-        documentType: { select: { name: true } },
+        documentType: { select: { id: true, name: true } },
       },
     });
 
@@ -136,6 +137,16 @@ export async function POST(request: Request) {
         status: document.status,
         notes: 'Dokumen dibuat',
       },
+    });
+
+    // Audit log
+    await createAuditLog({
+      userId: session.user.id,
+      action: 'CREATE',
+      entityType: 'DOCUMENT',
+      entityId: document.id,
+      details: { title: document.title, documentNumber: document.documentNumber },
+      ipAddress: getClientIp(request),
     });
 
     return NextResponse.json(document);

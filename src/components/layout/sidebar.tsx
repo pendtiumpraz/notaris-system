@@ -17,10 +17,16 @@ import {
   User,
   ChevronLeft,
   Globe,
-  Shield,
-  FolderOpen,
+  BarChart3,
+  GitBranch,
+  Image,
+  CalendarClock,
+  Bot,
+  Package,
+  KeyRound,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFeatureFlags } from '@/contexts/feature-flags-context';
 import type { UserRole } from '@prisma/client';
 
 interface SidebarItem {
@@ -28,6 +34,7 @@ interface SidebarItem {
   href: string;
   icon: React.ReactNode;
   roles: UserRole[];
+  featureKey: string; // Maps to feature-flags.ts key
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -36,78 +43,140 @@ const sidebarItems: SidebarItem[] = [
     href: '/dashboard',
     icon: <LayoutDashboard className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'dashboard',
   },
   {
     label: 'Dokumen',
     href: '/documents',
     icon: <FileText className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'documents',
   },
   {
     label: 'Jadwal',
     href: '/appointments',
     icon: <Calendar className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'appointments',
   },
   {
     label: 'Pesan',
     href: '/messages',
     icon: <MessageSquare className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'messages',
+  },
+  {
+    label: 'Ketersediaan',
+    href: '/staff/availability',
+    icon: <CalendarClock className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
+    featureKey: 'staff_availability',
   },
   {
     label: 'Manajemen Pengguna',
     href: '/admin/users',
     icon: <Users className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'user_management',
   },
   {
     label: 'Konten Website',
     href: '/admin/content',
     icon: <Globe className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'content_management',
   },
   {
     label: 'Google Drive',
     href: '/admin/drives',
     icon: <HardDrive className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'google_drive',
   },
   {
     label: 'Jenis Dokumen',
     href: '/admin/document-types',
     icon: <ClipboardList className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'document_types',
   },
   {
     label: 'Layanan',
     href: '/admin/services',
     icon: <Building className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'services',
   },
   {
     label: 'Audit Log',
     href: '/admin/audit-logs',
     icon: <ClipboardList className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'audit_logs',
+  },
+  {
+    label: 'Laporan',
+    href: '/admin/reports',
+    icon: <BarChart3 className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'reports',
+  },
+  {
+    label: 'Cabang',
+    href: '/admin/branches',
+    icon: <GitBranch className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'branches',
+  },
+  {
+    label: 'Galeri',
+    href: '/admin/gallery',
+    icon: <Image className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'gallery',
   },
   {
     label: 'Notifikasi',
     href: '/notifications',
     icon: <Bell className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'notifications',
   },
   {
     label: 'Profil',
     href: '/profile',
     icon: <User className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'profile',
+  },
+  {
+    label: 'AI Settings',
+    href: '/admin/ai-settings',
+    icon: <Bot className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'ai_settings',
+  },
+  {
+    label: 'License',
+    href: '/admin/license',
+    icon: <KeyRound className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN'],
+    featureKey: '__always__',
+  },
+  {
+    label: 'Paket & Fitur',
+    href: '/admin/feature-flags',
+    icon: <Package className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN'],
+    featureKey: '__always__', // Always visible for SUPER_ADMIN
   },
   {
     label: 'Pengaturan',
     href: '/admin/settings',
     icon: <Settings className="w-5 h-5" />,
     roles: ['SUPER_ADMIN'],
+    featureKey: 'settings',
   },
 ];
 
@@ -119,8 +188,21 @@ interface SidebarProps {
 
 export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const { isFeatureEnabled } = useFeatureFlags();
 
-  const filteredItems = sidebarItems.filter((item) => item.roles.includes(userRole));
+  const filteredItems = sidebarItems.filter((item) => {
+    // Must have role permission
+    if (!item.roles.includes(userRole)) return false;
+
+    // SUPER_ADMIN always sees everything
+    if (userRole === 'SUPER_ADMIN') return true;
+
+    // Special keys always visible
+    if (item.featureKey === '__always__') return true;
+
+    // Check feature flag for this specific role
+    return isFeatureEnabled(item.featureKey, userRole);
+  });
 
   return (
     <aside

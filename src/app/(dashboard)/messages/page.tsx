@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import {
   MessageSquare,
   Plus,
@@ -17,15 +18,25 @@ import {
   Users,
   Shield,
   Briefcase,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+interface MessageAttachment {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize: string;
+  mimeType: string;
+}
 
 interface Message {
   id: string;
   content: string;
   createdAt: string;
   sender: { id: string; name: string; avatarUrl: string | null };
+  attachments?: MessageAttachment[];
 }
 
 interface Conversation {
@@ -81,8 +92,14 @@ export default function MessagesPage() {
   const [selectedRecipient, setSelectedRecipient] = useState<AvailableUser | null>(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [aiDrafting, setAiDrafting] = useState(false);
+
+  const userRole = (session?.user as { role?: string })?.role || '';
+  const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(userRole);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchConversations = useCallback(async () => {
     setIsLoading(true);
@@ -142,26 +159,55 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Polling: refresh messages every 5 seconds when a conversation is selected
+  useEffect(() => {
+    if (!selectedConversation) return;
+    const interval = setInterval(() => {
+      fetchMessages(selectedConversation.id);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedConversation, fetchMessages]);
+
+  // Polling: refresh conversation list every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchConversations();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchConversations]);
+
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedConversation) return;
+    if ((!newMessage.trim() && attachments.length === 0) || !selectedConversation) return;
 
     setIsSending(true);
     try {
-      const res = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newMessage }),
-      });
+      let res;
+      if (attachments.length > 0) {
+        const formData = new FormData();
+        formData.append('content', newMessage || '📎 Lampiran');
+        attachments.forEach((file) => formData.append('attachments', file));
+        res = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        res = await fetch(`/api/conversations/${selectedConversation.id}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: newMessage }),
+        });
+      }
 
       if (res.ok) {
         const message = await res.json();
         setMessages((prev) => [...prev, message]);
         setNewMessage('');
+        setAttachments([]);
         fetchConversations();
       }
     } catch (error) {
@@ -170,6 +216,29 @@ export default function MessagesPage() {
       setIsSending(false);
     }
   };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter((f) => f.size <= 10 * 1024 * 1024); // 10MB limit
+    if (validFiles.length < files.length) {
+      toast.warning('Beberapa file melebihi batas 10MB dan dilewati.');
+    }
+    setAttachments((prev) => [...prev, ...validFiles]);
+    e.target.value = ''; // reset input
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number | string) => {
+    const size = typeof bytes === 'string' ? parseInt(bytes) : bytes;
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  const isImageMime = (mime: string) => mime.startsWith('image/');
 
   const handleOpenNewConversation = () => {
     setShowNewConversation(true);
@@ -409,6 +478,38 @@ export default function MessagesPage() {
                           <p className="text-xs text-emerald-400 mb-1">{msg.sender.name}</p>
                         )}
                         <p className="text-white">{msg.content}</p>
+                        {/* Attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {msg.attachments.map((att) => (
+                              <a
+                                key={att.id}
+                                href={att.filePath}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 rounded-lg bg-black/20 hover:bg-black/30 transition-colors text-white/90"
+                              >
+                                {isImageMime(att.mimeType) ? (
+                                  <img
+                                    src={att.filePath}
+                                    alt={att.fileName}
+                                    className="w-20 h-20 object-cover rounded"
+                                  />
+                                ) : (
+                                  <>
+                                    <FileText className="w-4 h-4 shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs truncate">{att.fileName}</p>
+                                      <p className="text-xs text-slate-400">
+                                        {formatFileSize(att.fileSize)}
+                                      </p>
+                                    </div>
+                                  </>
+                                )}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                         <div
                           className={`flex items-center gap-1 mt-1 ${
                             isMe ? 'justify-end' : 'justify-start'
@@ -431,27 +532,108 @@ export default function MessagesPage() {
             </div>
 
             {/* Message Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-slate-800">
-              <div className="flex items-center gap-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Ketik pesan..."
-                  className="flex-1 bg-slate-800 border-slate-700 text-white"
-                />
-                <Button
-                  type="submit"
-                  disabled={!newMessage.trim() || isSending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  {isSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
+            <div className="border-t border-slate-800">
+              {/* Attachment Preview */}
+              {attachments.length > 0 && (
+                <div className="px-4 pt-3 flex gap-2 flex-wrap">
+                  {attachments.map((file, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <Paperclip className="w-3 h-3 text-emerald-400" />
+                      <span className="text-slate-300 max-w-[120px] truncate">{file.name}</span>
+                      <span className="text-slate-500 text-xs">{formatFileSize(file.size)}</span>
+                      <button
+                        onClick={() => removeAttachment(idx)}
+                        className="text-slate-500 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <form onSubmit={handleSendMessage} className="p-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    multiple
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.xls,.xlsx,.txt"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-slate-400 hover:text-emerald-400 shrink-0"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </Button>
+                  {isStaffOrAdmin && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={aiDrafting || messages.length === 0}
+                      onClick={async () => {
+                        setAiDrafting(true);
+                        try {
+                          const recentMessages = messages.slice(-10).map((m) => ({
+                            sender: m.sender.name,
+                            content: m.content,
+                          }));
+                          const res = await fetch('/api/messages/ai-draft', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              conversationId: selectedConversation?.id,
+                              recentMessages,
+                            }),
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setNewMessage(data.draft || '');
+                          }
+                        } catch (err) {
+                          console.error('AI draft failed:', err);
+                        } finally {
+                          setAiDrafting(false);
+                        }
+                      }}
+                      className="text-purple-400 hover:text-purple-300 shrink-0"
+                      title="AI Draft Reply"
+                    >
+                      {aiDrafting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-5 h-5" />
+                      )}
+                    </Button>
                   )}
-                </Button>
-              </div>
-            </form>
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Ketik pesan..."
+                    className="flex-1 bg-slate-800 border-slate-700 text-white"
+                  />
+                  <Button
+                    type="submit"
+                    disabled={(!newMessage.trim() && attachments.length === 0) || isSending}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-slate-500">

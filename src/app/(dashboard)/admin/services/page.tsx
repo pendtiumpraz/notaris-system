@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Wrench, Plus, Search, Edit, Trash2, Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,7 +102,7 @@ export default function ServicesPage() {
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert('Nama layanan wajib diisi');
+      toast.warning('Nama layanan wajib diisi');
       return;
     }
 
@@ -124,11 +125,11 @@ export default function ServicesPage() {
         fetchServices();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal menyimpan');
+        toast.error(data.error || 'Gagal menyimpan');
       }
     } catch (error) {
       console.error('Error saving service:', error);
-      alert('Gagal menyimpan');
+      toast.error('Gagal menyimpan');
     } finally {
       setSaving(false);
     }
@@ -148,11 +149,11 @@ export default function ServicesPage() {
         fetchServices();
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal menghapus');
+        toast.error(data.error || 'Gagal menghapus');
       }
     } catch (error) {
       console.error('Error deleting service:', error);
-      alert('Gagal menghapus');
+      toast.error('Gagal menghapus');
     }
   };
 

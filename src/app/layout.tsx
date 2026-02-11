@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { SessionProvider } from '@/components/providers/session-provider';
+import ChatbotWidget from '@/components/chatbot-widget';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const inter = Inter({
@@ -30,6 +32,19 @@ export default function RootLayout({
             disableTransitionOnChange={false}
           >
             {children}
+            <ChatbotWidget />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#0f172a',
+                  border: '1px solid #1e293b',
+                  color: '#e2e8f0',
+                },
+              }}
+              richColors
+              closeButton
+            />
           </ThemeProvider>
         </SessionProvider>
       </body>

@@ -154,6 +154,16 @@ export async function GET() {
       stats.totalStaff = totalStaff;
       stats.upcomingAppointments = upcomingAppointments;
       stats.unreadMessages = unreadMessages;
+
+      // Count overdue documents for admin alerts
+      const overdueCount = await prisma.document.count({
+        where: {
+          deletedAt: null,
+          status: { in: ['SUBMITTED', 'IN_REVIEW', 'WAITING_SIGNATURE'] },
+          dueDate: { lt: new Date() },
+        },
+      });
+      stats.overdueDocuments = overdueCount;
     }
 
     // Get recent documents based on role
@@ -217,8 +227,47 @@ export async function GET() {
       },
     });
 
+    // Get recent notifications
+    const recentNotifications = await prisma.notification.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+
+    // Get today's appointments for staff
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayAppointmentsWhere: Record<string, unknown> = {
+      scheduledAt: { gte: todayStart, lte: todayEnd },
+      status: { in: ['PENDING', 'CONFIRMED'] },
+    };
+
+    if (userRole === 'STAFF') {
+      const staffRecord = await prisma.staff.findUnique({ where: { userId } });
+      if (staffRecord) {
+        todayAppointmentsWhere.staffId = staffRecord.id;
+      }
+    }
+
+    const todayAppointmentsList = await prisma.appointment.findMany({
+      where: todayAppointmentsWhere,
+      orderBy: { scheduledAt: 'asc' },
+      take: 10,
+      include: {
+        client: { include: { user: { select: { name: true } } } },
+        service: { select: { name: true } },
+      },
+    });
+
     return NextResponse.json({
       stats,
+      userRole,
       recentDocuments: recentDocuments.map((doc) => ({
         id: doc.id,
         title: doc.title,
@@ -229,6 +278,21 @@ export async function GET() {
         createdAt: doc.createdAt,
       })),
       upcomingAppointments: upcomingAppointmentsList.map((apt) => ({
+        id: apt.id,
+        service: apt.service?.name || '-',
+        client: apt.client?.user?.name || '-',
+        scheduledAt: apt.scheduledAt,
+        status: apt.status,
+      })),
+      recentNotifications: recentNotifications.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        type: n.type,
+        readAt: n.readAt,
+        createdAt: n.createdAt,
+      })),
+      todayAppointments: todayAppointmentsList.map((apt) => ({
         id: apt.id,
         service: apt.service?.name || '-',
         client: apt.client?.user?.name || '-',

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import { User, Mail, Phone, Building, MapPin, Save, Loader2, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,14 +93,14 @@ export default function ProfilePage() {
       if (res.ok) {
         await update({ name: formData.name });
         fetchProfile();
-        alert('Profil berhasil diperbarui');
+        toast.success('Profil berhasil diperbarui');
       } else {
         const data = await res.json();
-        alert(data.error || 'Gagal memperbarui profil');
+        toast.error(data.error || 'Gagal memperbarui profil');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Gagal memperbarui profil');
+      toast.error('Gagal memperbarui profil');
     } finally {
       setSaving(false);
     }

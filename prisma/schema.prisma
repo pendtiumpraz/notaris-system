@@ -75,6 +75,7 @@ model User {
   conversationParts    ConversationParticipant[]
   timelineChanges      DocumentTimeline[]
   connectedDrives      GoogleDrive[]
+  aiResults            AIResult[]
 
   // NextAuth relations
   accounts Account[]
@@ -191,6 +192,7 @@ model Document {
   timeline     DocumentTimeline[]
   conversation Conversation?
   appointments Appointment[]
+  aiResults    AIResult[]
 
   @@index([clientId])
   @@index([staffId])
@@ -587,3 +589,51 @@ model GalleryImage {
   @@index([isActive])
   @@map("gallery_images")
 }
+
+// ==================== AI RESULTS ====================
+
+model AIResult {
+  id           String   @id @default(uuid())
+  documentId   String?  @map("document_id")
+  userId       String   @map("user_id")
+  action       String   // generate, analyze, correct, revise, summarize, translate, letter, compare, checklist, extract, risk_assessment
+  prompt       String?  @db.Text
+  result       String   @db.Text // HTML or JSON string result
+  resultJson   Json?    @map("result_json") // Structured JSON result for parsed UI
+  provider     String?  // deepseek, openai, gemini
+  model        String?  // model id used
+  tokensUsed   Int?     @map("tokens_used")
+  durationMs   Int?     @map("duration_ms") // How long the AI call took
+  metadata     Json?    // Additional metadata
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  document Document? @relation(fields: [documentId], references: [id])
+  user     User      @relation(fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("ai_results")
+}
+
+// ==================== LICENSE ====================
+
+model License {
+  id            String    @id @default(uuid())
+  licenseKey    String    @unique @map("license_key")
+  packageType   String    @map("package_type") // complete, no_ai, limited_ai
+  domain        String    // Bound domain (e.g. notaris.example.com)
+  holderName    String?   @map("holder_name") // Name of the license holder (notaris)
+  officeName    String?   @map("office_name") // Name of notary office
+  activatedAt   DateTime  @default(now()) @map("activated_at")
+  expiresAt     DateTime? @map("expires_at") // null = lifetime
+  lastVerified  DateTime? @map("last_verified")
+  isActive      Boolean   @default(true) @map("is_active")
+  serverHash    String?   @map("server_hash") // Hash of server identifier for extra binding
+  metadata      Json?     // Extra data from license server
+
+  @@map("licenses")
+}
+
