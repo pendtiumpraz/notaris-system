@@ -64,6 +64,17 @@ export async function POST(request: Request) {
 
     const cleanKey = licenseKey.trim().toUpperCase();
 
+    // Log activation attempt details
+    const domain = getAppDomain();
+    const serverHash = generateServerHash();
+    console.log('[License Activation] Key:', cleanKey);
+    console.log('[License Activation] Domain:', domain);
+    console.log('[License Activation] Server Hash:', serverHash.substring(0, 8) + '...');
+    console.log(
+      '[License Activation] License Server URL:',
+      process.env.LICENSE_SERVER_URL || 'DEFAULT'
+    );
+
     // Check if this key is already activated locally
     const existing = await prisma.license.findUnique({
       where: { licenseKey: cleanKey },
@@ -80,11 +91,13 @@ export async function POST(request: Request) {
 
     // Activate against license server
     const result = await activateLicense(cleanKey);
+    console.log('[License Activation] Result:', JSON.stringify(result));
 
     if (!result.success || !result.license) {
       return NextResponse.json(
         {
           error: result.error || 'Aktivasi gagal',
+          debug: { domain, licenseServerUrl: process.env.LICENSE_SERVER_URL || 'not-set' },
         },
         { status: 400 }
       );
@@ -137,7 +150,13 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('License activation error:', error);
-    return NextResponse.json({ error: 'Gagal mengaktifkan license' }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          'Gagal mengaktifkan license: ' + (error instanceof Error ? error.message : String(error)),
+      },
+      { status: 500 }
+    );
   }
 }
 
