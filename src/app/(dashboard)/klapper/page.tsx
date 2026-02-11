@@ -1,7 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { BookText, Search, Loader2, Calendar, Hash, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  BookText,
+  Search,
+  Loader2,
+  Calendar,
+  Hash,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -93,14 +102,29 @@ export default function KlapperPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <BookText className="w-7 h-7 text-blue-400" />
-          Buku Klapper
-        </h1>
-        <p className="text-slate-400">
-          Indeks alfabetis penghadap akta — Sesuai UU No. 2/2014 tentang Jabatan Notaris
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <BookText className="w-7 h-7 text-blue-400" />
+            Buku Klapper
+          </h1>
+          <p className="text-slate-400">
+            Indeks alfabetis penghadap akta — Sesuai UU No. 2/2014 tentang Jabatan Notaris
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const params = new URLSearchParams();
+            params.set('tahun', tahun.toString());
+            if (bulan) params.set('bulan', bulan.toString());
+            window.open(`/api/klapper/export?${params}`, '_blank');
+          }}
+          className="border-slate-700 text-slate-300 hover:text-white"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export PDF
+        </Button>
       </div>
 
       {/* Filters */}

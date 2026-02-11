@@ -19,6 +19,9 @@ import {
   Send,
   CreditCard,
   XCircle,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -140,6 +143,8 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 15;
 
   const [sheetMode, setSheetMode] = useState<'closed' | 'create' | 'view' | 'edit' | 'payment'>(
     'closed'
@@ -215,6 +220,9 @@ export default function BillingPage() {
       (inv.document?.title?.toLowerCase().includes(q) ?? false)
     );
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginatedInvoices = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const openCreate = () => {
     setFormClientId('');
@@ -470,14 +478,20 @@ export default function BillingPage() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Cari invoice, nama klien..."
             className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
           className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="">Semua Status</option>
@@ -499,7 +513,7 @@ export default function BillingPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {filtered.map((inv) => {
+          {paginatedInvoices.map((inv) => {
             const st = statusConfig[inv.status] || statusConfig.DRAFT;
             return (
               <Card
@@ -552,6 +566,14 @@ export default function BillingPage() {
                         <Button size="sm" variant="ghost" onClick={() => openView(inv)}>
                           <Eye className="w-4 h-4" />
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => window.open(`/api/invoices/${inv.id}/export`, '_blank')}
+                          title="Export PDF"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
                         {isAdmin && !['PAID', 'CANCELLED'].includes(inv.status) && (
                           <>
                             <Button size="sm" variant="ghost" onClick={() => openPayment(inv)}>
@@ -585,6 +607,37 @@ export default function BillingPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            Halaman {page} dari {totalPages} ({filtered.length} tagihan)
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="border-slate-700 text-slate-400"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Sebelumnya
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage(Math.min(totalPages, page + 1))}
+              disabled={page === totalPages}
+              className="border-slate-700 text-slate-400"
+            >
+              Selanjutnya
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 

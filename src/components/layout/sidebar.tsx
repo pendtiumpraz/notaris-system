@@ -33,21 +33,35 @@ import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/feature-flags-context';
 import type { UserRole } from '@prisma/client';
 
+type SidebarCategory = 'main' | 'notaris' | 'keuangan' | 'komunikasi' | 'manajemen' | 'pengaturan';
+
 interface SidebarItem {
   label: string;
   href: string;
   icon: React.ReactNode;
   roles: UserRole[];
-  featureKey: string; // Maps to feature-flags.ts key
+  featureKey: string;
+  category: SidebarCategory;
 }
 
+const CATEGORY_LABELS: Record<SidebarCategory, string> = {
+  main: 'Utama',
+  notaris: 'Notaris',
+  keuangan: 'Keuangan',
+  komunikasi: 'Komunikasi',
+  manajemen: 'Manajemen',
+  pengaturan: 'Pengaturan',
+};
+
 const sidebarItems: SidebarItem[] = [
+  // ── Utama ──
   {
     label: 'Dashboard',
     href: '/dashboard',
     icon: <LayoutDashboard className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'dashboard',
+    category: 'main',
   },
   {
     label: 'Dokumen',
@@ -55,6 +69,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <FileText className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'documents',
+    category: 'main',
   },
   {
     label: 'Jadwal',
@@ -62,27 +77,17 @@ const sidebarItems: SidebarItem[] = [
     icon: <Calendar className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'appointments',
+    category: 'main',
   },
-  {
-    label: 'Pesan',
-    href: '/messages',
-    icon: <MessageSquare className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
-    featureKey: 'messages',
-  },
-  {
-    label: 'Tagihan',
-    href: '/billing',
-    icon: <Receipt className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
-    featureKey: 'billing',
-  },
+
+  // ── Notaris ──
   {
     label: 'Repertorium',
     href: '/repertorium',
     icon: <BookOpen className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
     featureKey: 'repertorium',
+    category: 'notaris',
   },
   {
     label: 'Klapper',
@@ -90,41 +95,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <BookText className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
     featureKey: 'klapper',
-  },
-  {
-    label: 'Ketersediaan',
-    href: '/staff/availability',
-    icon: <CalendarClock className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
-    featureKey: 'staff_availability',
-  },
-  {
-    label: 'Manajemen Pengguna',
-    href: '/admin/users',
-    icon: <Users className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'user_management',
-  },
-  {
-    label: 'Konten Website',
-    href: '/admin/content',
-    icon: <Globe className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'content_management',
-  },
-  {
-    label: 'Google Drive',
-    href: '/admin/drives',
-    icon: <HardDrive className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'google_drive',
-  },
-  {
-    label: 'Jenis Dokumen',
-    href: '/admin/document-types',
-    icon: <ClipboardList className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'document_types',
+    category: 'notaris',
   },
   {
     label: 'Template Akta',
@@ -132,20 +103,17 @@ const sidebarItems: SidebarItem[] = [
     icon: <Stamp className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
     featureKey: 'document_templates',
+    category: 'notaris',
   },
+
+  // ── Keuangan ──
   {
-    label: 'Layanan',
-    href: '/admin/services',
-    icon: <Building className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'services',
-  },
-  {
-    label: 'Audit Log',
-    href: '/admin/audit-logs',
-    icon: <ClipboardList className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'audit_logs',
+    label: 'Tagihan',
+    href: '/billing',
+    icon: <Receipt className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'billing',
+    category: 'keuangan',
   },
   {
     label: 'Laporan',
@@ -153,20 +121,17 @@ const sidebarItems: SidebarItem[] = [
     icon: <BarChart3 className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
     featureKey: 'reports',
+    category: 'keuangan',
   },
+
+  // ── Komunikasi ──
   {
-    label: 'Cabang',
-    href: '/admin/branches',
-    icon: <GitBranch className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'branches',
-  },
-  {
-    label: 'Galeri',
-    href: '/admin/gallery',
-    icon: <Image className="w-5 h-5" />,
-    roles: ['SUPER_ADMIN', 'ADMIN'],
-    featureKey: 'gallery',
+    label: 'Pesan',
+    href: '/messages',
+    icon: <MessageSquare className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    featureKey: 'messages',
+    category: 'komunikasi',
   },
   {
     label: 'Notifikasi',
@@ -174,13 +139,83 @@ const sidebarItems: SidebarItem[] = [
     icon: <Bell className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'notifications',
+    category: 'komunikasi',
   },
+
+  // ── Manajemen ──
+  {
+    label: 'Pengguna',
+    href: '/admin/users',
+    icon: <Users className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'user_management',
+    category: 'manajemen',
+  },
+  {
+    label: 'Ketersediaan Staff',
+    href: '/staff/availability',
+    icon: <CalendarClock className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
+    featureKey: 'staff_availability',
+    category: 'manajemen',
+  },
+  {
+    label: 'Jenis Dokumen',
+    href: '/admin/document-types',
+    icon: <ClipboardList className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'document_types',
+    category: 'manajemen',
+  },
+  {
+    label: 'Layanan',
+    href: '/admin/services',
+    icon: <Building className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'services',
+    category: 'manajemen',
+  },
+  {
+    label: 'Cabang',
+    href: '/admin/branches',
+    icon: <GitBranch className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'branches',
+    category: 'manajemen',
+  },
+  {
+    label: 'Konten Website',
+    href: '/admin/content',
+    icon: <Globe className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'content_management',
+    category: 'manajemen',
+  },
+  {
+    label: 'Galeri',
+    href: '/admin/gallery',
+    icon: <Image className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'gallery',
+    category: 'manajemen',
+  },
+  {
+    label: 'Audit Log',
+    href: '/admin/audit-logs',
+    icon: <ClipboardList className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    featureKey: 'audit_logs',
+    category: 'manajemen',
+  },
+
+  // ── Pengaturan ──
   {
     label: 'Profil',
     href: '/profile',
     icon: <User className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
     featureKey: 'profile',
+    category: 'pengaturan',
   },
   {
     label: 'AI Settings',
@@ -188,6 +223,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <Bot className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
     featureKey: 'ai_settings',
+    category: 'pengaturan',
   },
   {
     label: 'License',
@@ -195,13 +231,15 @@ const sidebarItems: SidebarItem[] = [
     icon: <KeyRound className="w-5 h-5" />,
     roles: ['SUPER_ADMIN'],
     featureKey: '__always__',
+    category: 'pengaturan',
   },
   {
     label: 'Paket & Fitur',
     href: '/admin/feature-flags',
     icon: <Package className="w-5 h-5" />,
     roles: ['SUPER_ADMIN'],
-    featureKey: '__always__', // Always visible for SUPER_ADMIN
+    featureKey: '__always__',
+    category: 'pengaturan',
   },
   {
     label: 'Pengaturan',
@@ -209,7 +247,18 @@ const sidebarItems: SidebarItem[] = [
     icon: <Settings className="w-5 h-5" />,
     roles: ['SUPER_ADMIN'],
     featureKey: 'settings',
+    category: 'pengaturan',
   },
+];
+
+// Order of categories in sidebar
+const CATEGORY_ORDER: SidebarCategory[] = [
+  'main',
+  'notaris',
+  'keuangan',
+  'komunikasi',
+  'manajemen',
+  'pengaturan',
 ];
 
 interface SidebarProps {
@@ -222,27 +271,24 @@ export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { isFeatureEnabled, hasActiveLicense } = useFeatureFlags();
 
-  // Items allowed for SUPER_ADMIN when no license is active
   const NO_LICENSE_ALLOWED_HREFS = ['/admin/license', '/admin/users', '/dashboard'];
 
   const filteredItems = sidebarItems.filter((item) => {
-    // Must have role permission
     if (!item.roles.includes(userRole)) return false;
-
-    // SUPER_ADMIN without license: only show License, User Management, Dashboard
     if (userRole === 'SUPER_ADMIN' && !hasActiveLicense) {
       return NO_LICENSE_ALLOWED_HREFS.includes(item.href);
     }
-
-    // SUPER_ADMIN with license: sees everything
     if (userRole === 'SUPER_ADMIN') return true;
-
-    // Special keys always visible
     if (item.featureKey === '__always__') return true;
-
-    // Check feature flag for this specific role
     return isFeatureEnabled(item.featureKey, userRole);
   });
+
+  // Group by category, preserving order
+  const groupedItems = CATEGORY_ORDER.map((cat) => ({
+    category: cat,
+    label: CATEGORY_LABELS[cat],
+    items: filteredItems.filter((item) => item.category === cat),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <aside
@@ -270,26 +316,38 @@ export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-3 space-y-1 overflow-y-auto h-[calc(100vh-4rem)]">
-        {filteredItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              )}
-            >
-              {item.icon}
-              {!isCollapsed && <span className="font-medium">{item.label}</span>}
-            </Link>
-          );
-        })}
+      <nav className="p-3 space-y-4 overflow-y-auto h-[calc(100vh-4rem)]">
+        {groupedItems.map((group) => (
+          <div key={group.category}>
+            {/* Category Label */}
+            {!isCollapsed && (
+              <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                {group.label}
+              </p>
+            )}
+            {isCollapsed && <div className="mx-auto w-6 border-t border-slate-800 mb-2" />}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200',
+                      isActive
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                    )}
+                  >
+                    {item.icon}
+                    {!isCollapsed && <span className="font-medium text-sm">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
     </aside>
   );

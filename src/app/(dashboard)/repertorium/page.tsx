@@ -16,6 +16,7 @@ import {
   ChevronRight,
   X,
   Save,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -209,10 +210,25 @@ export default function RepertoriumPage() {
             Daftar akta notaris — Sesuai UU No. 2/2014 tentang Jabatan Notaris
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Entri
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const params = new URLSearchParams();
+              params.set('tahun', tahun.toString());
+              if (bulan) params.set('bulan', bulan.toString());
+              window.open(`/api/repertorium/export?${params}`, '_blank');
+            }}
+            className="border-slate-700 text-slate-300 hover:text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+          <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Entri
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

@@ -64,6 +64,8 @@
     "dotenv": "^17.2.3",
     "googleapis": "^167.0.0",
     "html2pdf.js": "^0.14.0",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.556.0",
     "next": "16.0.7",
     "next-auth": "^5.0.0-beta.30",
