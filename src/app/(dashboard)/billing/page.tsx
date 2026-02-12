@@ -413,8 +413,34 @@ export default function BillingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-40 bg-slate-800 rounded animate-pulse mb-2" />
+            <div className="h-4 w-64 bg-slate-800 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="bg-slate-800/50 border-slate-700">
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-700 animate-pulse" />
+                <div>
+                  <div className="h-4 w-20 bg-slate-700 rounded animate-pulse mb-2" />
+                  <div className="h-6 w-28 bg-slate-700 rounded animate-pulse" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="h-20 bg-slate-800/50 border border-slate-700 rounded-xl animate-pulse"
+            />
+          ))}
+        </div>
       </div>
     );
   }

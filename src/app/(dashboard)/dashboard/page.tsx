@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart,
   Bar,
@@ -808,6 +809,62 @@ function AdminDashboard({
         </div>
       )}
 
+      {/* Quick Actions */}
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-lg text-white flex items-center gap-2">
+            <Plus className="w-5 h-5 text-emerald-400" />
+            Aksi Cepat
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <Link
+              href="/documents"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-emerald-500/10 border border-slate-700 hover:border-emerald-500/30 transition-all group"
+            >
+              <FileText className="w-6 h-6 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Buat Dokumen</span>
+            </Link>
+            <Link
+              href="/billing"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-blue-500/10 border border-slate-700 hover:border-blue-500/30 transition-all group"
+            >
+              <DollarSign className="w-6 h-6 text-blue-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Buat Tagihan</span>
+            </Link>
+            <Link
+              href="/appointments"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-purple-500/10 border border-slate-700 hover:border-purple-500/30 transition-all group"
+            >
+              <Calendar className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Tambah Jadwal</span>
+            </Link>
+            <Link
+              href="/repertorium"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-cyan-500/10 border border-slate-700 hover:border-cyan-500/30 transition-all group"
+            >
+              <BookOpen className="w-6 h-6 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Repertorium</span>
+            </Link>
+            <Link
+              href="/admin/templates"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-orange-500/10 border border-slate-700 hover:border-orange-500/30 transition-all group"
+            >
+              <ClipboardList className="w-6 h-6 text-orange-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Template Akta</span>
+            </Link>
+            <Link
+              href="/admin/reports"
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-800 hover:bg-yellow-500/10 border border-slate-700 hover:border-yellow-500/30 transition-all group"
+            >
+              <BarChart3 className="w-6 h-6 text-yellow-400 group-hover:scale-110 transition-transform" />
+              <span className="text-xs text-slate-300 font-medium">Laporan</span>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Documents */}
@@ -996,8 +1053,50 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      <div className="space-y-6">
+        {/* Greeting skeleton */}
+        <div>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        {/* Stats skeleton */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Card key={i} className="bg-slate-900 border-slate-800">
+              <CardContent className="p-4">
+                <Skeleton className="w-12 h-12 rounded-xl mb-4" />
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-4 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="bg-slate-900 border-slate-800 col-span-1 lg:col-span-2">
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-48 mb-4" />
+              <Skeleton className="h-[280px] w-full rounded-xl" />
+            </CardContent>
+          </Card>
+          <Card className="bg-slate-900 border-slate-800">
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-40 mb-4" />
+              <Skeleton className="h-[280px] w-full rounded-xl" />
+            </CardContent>
+          </Card>
+        </div>
+        {/* Quick actions skeleton */}
+        <Card className="bg-slate-900 border-slate-800">
+          <CardContent className="p-6">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 rounded-xl" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

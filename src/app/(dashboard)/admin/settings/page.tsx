@@ -2,7 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Settings, Save, Loader2, Globe, Phone, Mail, MapPin, Clock, Building } from 'lucide-react';
+import {
+  Settings,
+  Save,
+  Loader2,
+  Globe,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  Building,
+  Palette,
+  Image as ImageIcon,
+  FileSignature,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -111,6 +124,7 @@ export default function SettingsPage() {
         <TabsList className="bg-slate-800 border-slate-700">
           <TabsTrigger value="general">Umum</TabsTrigger>
           <TabsTrigger value="contact">Kontak</TabsTrigger>
+          <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="social">Media Sosial</TabsTrigger>
           <TabsTrigger value="content">Konten</TabsTrigger>
         </TabsList>
@@ -257,6 +271,146 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Branding Settings */}
+        <TabsContent value="branding">
+          <div className="space-y-6">
+            <Card className="bg-slate-900 border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Palette className="w-5 h-5" />
+                  Logo & Identitas Visual
+                </CardTitle>
+                <CardDescription>Logo dan identitas visual yang tampil di sistem</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      URL Logo
+                    </Label>
+                    <Input
+                      value={settings.branding_logo_url || ''}
+                      onChange={(e) => updateSetting('branding_logo_url', e.target.value)}
+                      className="bg-slate-800 border-slate-700"
+                      placeholder="https://example.com/logo.png"
+                    />
+                    <p className="text-xs text-slate-500">
+                      Logo kantor yang tampil di header & invoice
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>URL Favicon</Label>
+                    <Input
+                      value={settings.branding_favicon_url || ''}
+                      onChange={(e) => updateSetting('branding_favicon_url', e.target.value)}
+                      className="bg-slate-800 border-slate-700"
+                      placeholder="https://example.com/favicon.ico"
+                    />
+                    <p className="text-xs text-slate-500">Icon browser tab (16x16 atau 32x32)</p>
+                  </div>
+                </div>
+
+                {settings.branding_logo_url && (
+                  <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
+                    <p className="text-xs text-slate-400 mb-2">Preview Logo:</p>
+                    <img
+                      src={settings.branding_logo_url}
+                      alt="Logo preview"
+                      className="max-h-16 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-900 border-slate-800">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <FileSignature className="w-5 h-5" />
+                  Invoice & Dokumen
+                </CardTitle>
+                <CardDescription>
+                  Kustomisasi header dan footer pada invoice & dokumen cetak
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Header Invoice</Label>
+                  <Textarea
+                    value={settings.invoice_header || ''}
+                    onChange={(e) => updateSetting('invoice_header', e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                    rows={3}
+                    placeholder="KANTOR NOTARIS & PPAT\nNama Notaris, S.H., M.Kn.\nJl. Jendral Sudirman No. 123"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Teks header yang muncul di atas invoice (gunakan Enter untuk baris baru)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Footer Invoice</Label>
+                  <Input
+                    value={settings.invoice_footer || ''}
+                    onChange={(e) => updateSetting('invoice_footer', e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                    placeholder="Terima kasih atas kepercayaan Anda."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nomor SK Notaris</Label>
+                    <Input
+                      value={settings.notaris_sk_number || ''}
+                      onChange={(e) => updateSetting('notaris_sk_number', e.target.value)}
+                      className="bg-slate-800 border-slate-700"
+                      placeholder="SK Menkumham No. AHU-...."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nomor SK PPAT</Label>
+                    <Input
+                      value={settings.ppat_sk_number || ''}
+                      onChange={(e) => updateSetting('ppat_sk_number', e.target.value)}
+                      className="bg-slate-800 border-slate-700"
+                      placeholder="SK BPN No. ...."
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>NPWP Kantor</Label>
+                  <Input
+                    value={settings.office_npwp || ''}
+                    onChange={(e) => updateSetting('office_npwp', e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                    placeholder="00.000.000.0-000.000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Rekening Bank</Label>
+                  <Textarea
+                    value={settings.bank_account || ''}
+                    onChange={(e) => updateSetting('bank_account', e.target.value)}
+                    className="bg-slate-800 border-slate-700"
+                    rows={2}
+                    placeholder="Bank BCA\nNo. Rek: 1234567890 a/n Kantor Notaris"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Info rekening bank yang tampil di invoice
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Social Media Settings */}
