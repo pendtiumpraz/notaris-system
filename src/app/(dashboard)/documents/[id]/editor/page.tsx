@@ -87,6 +87,85 @@ interface DocumentInfo {
   content: string;
 }
 
+// Page number overlay component
+function PageNumberOverlay({
+  pageHeight,
+  marginBottom,
+  marginRight,
+  gapSize,
+}: {
+  pageHeight: number;
+  marginBottom: number;
+  marginRight: number;
+  gapSize: number;
+}) {
+  const [pageCount, setPageCount] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current?.parentElement;
+    if (!container) return;
+
+    const updatePageCount = () => {
+      const heightPx = container.scrollHeight;
+      // Convert pageHeight from mm to px (1mm ≈ 3.7795px at 96dpi)
+      const pageHeightPx = pageHeight * 3.7795;
+      const gapPx = gapSize;
+      const totalPageUnit = pageHeightPx + gapPx;
+      const count = Math.max(1, Math.ceil(heightPx / totalPageUnit));
+      setPageCount(count);
+    };
+
+    updatePageCount();
+    const observer = new ResizeObserver(updatePageCount);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [pageHeight, gapSize]);
+
+  // Convert mm to px
+  const pageHeightPx = pageHeight * 3.7795;
+  const gapPx = gapSize;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        pointerEvents: 'none',
+        zIndex: 15,
+      }}
+    >
+      {Array.from({ length: pageCount }, (_, i) => {
+        const pageBottomPx = (i + 1) * pageHeightPx + i * gapPx;
+        const numberPositionPx = pageBottomPx - marginBottom * 0.4 * 3.7795;
+
+        return (
+          <div
+            key={i}
+            className="page-number-overlay"
+            style={{
+              position: 'absolute',
+              top: `${numberPositionPx}px`,
+              right: `${marginRight * 0.7 * 3.7795}px`,
+              color: '#9ca3af',
+              fontFamily: "'Times New Roman', serif",
+              fontSize: '9pt',
+              userSelect: 'none',
+            }}
+          >
+            Halaman {i + 1}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: session } = useSession();
@@ -204,11 +283,37 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
 
   // Export to PDF
   const handleExportPDF = async () => {
-    if (!printRef.current || !docInfo) return;
+    if (!printRef.current || !docInfo || !editor) return;
 
     const html2pdf = (await import('html2pdf.js')).default;
 
-    const element = printRef.current;
+    // Sync editor content into the hidden print container
+    const printContainer = printRef.current;
+    printContainer.innerHTML = `
+      <style>
+        .print-content {
+          color: #1a1a1a;
+          font-family: 'Times New Roman', 'Georgia', serif;
+          font-size: ${pageSettings.fontSize}pt;
+          line-height: 2;
+        }
+        .print-content h1 { font-size: ${Math.round(pageSettings.fontSize * 1.33)}pt; font-weight: bold; text-align: center; margin-bottom: 4pt; text-transform: uppercase; letter-spacing: 2px; }
+        .print-content h2 { font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; text-align: center; text-transform: uppercase; margin: 16pt 0 8pt; }
+        .print-content h3 { font-size: ${pageSettings.fontSize}pt; font-weight: bold; margin: 8pt 0 4pt; }
+        .print-content p { margin-bottom: 4pt; text-align: justify; }
+        .print-content table { border-collapse: collapse; width: 100%; margin: 12pt 0; }
+        .print-content th, .print-content td { border: 1px solid #333; padding: 6pt 8pt; font-size: ${pageSettings.fontSize - 1}pt; }
+        .print-content th { background: #f5f5f5; font-weight: bold; }
+      </style>
+      <div class="print-content">${editor.getHTML()}</div>
+    `;
+
+    // Temporarily move into view for html2canvas
+    printContainer.style.position = 'fixed';
+    printContainer.style.left = '-9999px';
+    printContainer.style.top = '0';
+    printContainer.style.zIndex = '-1';
+
     const jsPdfFormat =
       pageSettings.paperSize === 'A4'
         ? 'a4'
@@ -217,24 +322,6 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
           : pageSettings.paperSize === 'LETTER'
             ? 'letter'
             : ([paperDef.width, paperDef.height] as unknown as string);
-
-    // Clone element and strip editor-only visual styles for clean PDF
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.backgroundImage = 'none';
-    clone.style.boxShadow = 'none';
-    clone.style.padding = '0';
-    // Remove pseudo-element styles (margin indicators, page lines)
-    const styleEl = clone.querySelector('style');
-    if (styleEl) {
-      styleEl.textContent =
-        styleEl.textContent
-          ?.replace(/\.document-pages-container::before\s*\{[^}]*\}/g, '')
-          ?.replace(/\.document-pages-container::after\s*\{[^}]*\}/g, '')
-          ?.replace(
-            /\.document-pages-container\s*\{[^}]*\}/g,
-            '.document-pages-container { background: white; }'
-          ) || '';
-    }
 
     const opt = {
       margin: [
@@ -254,7 +341,12 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
 
-    html2pdf().set(opt).from(clone).save();
+    await html2pdf().set(opt).from(printContainer).save();
+
+    // Reset print container
+    printContainer.style.position = 'absolute';
+    printContainer.style.left = '-9999px';
+    printContainer.style.top = '-9999px';
   };
 
   // AI Actions
@@ -849,80 +941,99 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       {/* Main Content Area */}
       <div className="flex gap-4">
         {/* Paper Editor */}
-        <div className="flex-1 flex justify-center overflow-auto">
-          <div className="py-4">
+        <div
+          className="flex-1 flex justify-center overflow-auto"
+          style={{ backgroundColor: '#4a5568' }}
+        >
+          <div className="py-6 px-4">
+            {/* Hidden print container */}
             <div
               ref={printRef}
-              className="document-pages-container"
+              className="document-print-source"
               style={{
                 width: `${pageWidth}mm`,
                 minHeight: `${pageHeight}mm`,
-                paddingLeft: `${pageSettings.marginLeft}mm`,
-                paddingRight: `${pageSettings.marginRight}mm`,
-                paddingTop: `${pageSettings.marginTop}mm`,
-                paddingBottom: `${pageSettings.marginBottom}mm`,
+                padding: `${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm`,
                 boxSizing: 'border-box',
-                position: 'relative',
+                position: 'absolute',
+                left: '-9999px',
+                top: '-9999px',
                 backgroundColor: 'white',
+              }}
+            />
+            <div
+              className="document-pages-container"
+              style={{
+                width: `${pageWidth}mm`,
+                position: 'relative',
               }}
             >
               <style>{`
-                /* ===== Multi-page visual with per-page margins ===== */
+                /* ===== Google Docs-style multi-page layout ===== */
+
+                /* The pages wrapper - stacks pages vertically */
                 .document-pages-container {
-                  /*
-                   * Page layout: Each page = pageHeight mm
-                   * Content area per page = pageHeight - marginTop - marginBottom
-                   * Between pages: bottomMargin of page N + gap + topMargin of page N+1
-                   * 
-                   * The gradient creates:
-                   *  - Content zone: white (contentHeight mm)
-                   *  - Margin zone: light gray (#f1f5f9) for bottom + top margins
-                   *  - Page separator: darker line (#94a3b8) between pages
-                   */
-                  background-image:
-                    repeating-linear-gradient(
-                      to bottom,
-                      /* Top margin zone — shown as light tint */
-                      rgba(241,245,249,0.5) 0mm,
-                      rgba(241,245,249,0.5) ${pageSettings.marginTop}mm,
-                      /* Content area — fully white */
-                      transparent ${pageSettings.marginTop}mm,
-                      transparent ${pageHeight - pageSettings.marginBottom}mm,
-                      /* Bottom margin zone — shown as light tint */
-                      rgba(241,245,249,0.5) ${pageHeight - pageSettings.marginBottom}mm,
-                      rgba(241,245,249,0.5) ${pageHeight}mm
-                    );
-                  background-size: 100% ${pageHeight}mm;
+                  /* Each "page" is pageHeight tall, with a 12px gap between */
+                  counter-reset: page-counter;
+                }
+
+                /* Each page is rendered via background + box-shadow trick */
+                .document-pages-container .document-page-content {
+                  position: relative;
+                  width: 100%;
+                  min-height: ${pageHeight}mm;
+                  /* Content sits inside the margins */
+                  padding: ${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm;
+                  box-sizing: border-box;
                   background-color: white;
+                  /* Page shadow for premium look */
                   box-shadow:
-                    0 0 0 1px rgba(0,0,0,0.05),
-                    0 4px 6px -1px rgba(0,0,0,0.1),
-                    0 20px 25px -5px rgba(0,0,0,0.15);
-                }
-
-                /* Page separator lines between pages */
-                .document-pages-container::after {
-                  content: '';
-                  position: absolute;
-                  top: 0;
-                  left: 0;
-                  right: 0;
-                  bottom: 0;
-                  pointer-events: none;
-                  z-index: 2;
+                    0 1px 3px rgba(0,0,0,0.12),
+                    0 4px 6px rgba(0,0,0,0.08),
+                    0 12px 24px rgba(0,0,0,0.12);
+                  /* Visual page breaks */
                   background-image:
                     repeating-linear-gradient(
                       to bottom,
-                      transparent 0,
-                      transparent calc(${pageHeight}mm - 0.5px),
-                      #94a3b8 calc(${pageHeight}mm - 0.5px),
-                      #94a3b8 calc(${pageHeight}mm + 0.5px),
-                      transparent calc(${pageHeight}mm + 0.5px)
+                      white 0mm,
+                      white ${pageHeight}mm,
+                      transparent ${pageHeight}mm
                     );
+                  background-size: 100% calc(${pageHeight}mm + 12px);
                 }
 
-                /* Left/right margin indicators */
-                .document-pages-container::before {
+                /* Page separation gap using box-shadow on pseudo-element */
+                .document-page-content::before {
+                  content: '';
+                  position: absolute;
+                  left: 0;
+                  right: 0;
+                  pointer-events: none;
+                  z-index: 10;
+                  /* Repeating page breaks with visible gap */
+                  background-image:
+                    repeating-linear-gradient(
+                      to bottom,
+                      transparent 0mm,
+                      transparent calc(${pageHeight}mm - 1px),
+                      /* Bottom shadow line */
+                      rgba(0,0,0,0.15) calc(${pageHeight}mm - 1px),
+                      rgba(0,0,0,0.15) ${pageHeight}mm,
+                      /* Dark gap between pages */
+                      #4a5568 ${pageHeight}mm,
+                      #4a5568 calc(${pageHeight}mm + 12px),
+                      /* Top shadow line of next page */
+                      rgba(0,0,0,0.15) calc(${pageHeight}mm + 12px),
+                      rgba(0,0,0,0.15) calc(${pageHeight}mm + 13px),
+                      transparent calc(${pageHeight}mm + 13px)
+                    );
+                  background-size: 100% calc(${pageHeight}mm + 12px);
+                  top: 0;
+                  bottom: 0;
+                }
+
+                /* Page number indicators */
+                .document-page-content::after {
                   content: '';
                   position: absolute;
                   top: 0;
@@ -930,11 +1041,30 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                   right: 0;
                   bottom: 0;
                   pointer-events: none;
-                  z-index: 2;
-                  border-left: 1px dashed rgba(203,213,225,0.4);
-                  border-right: 1px dashed rgba(203,213,225,0.4);
-                  margin-left: calc(${pageSettings.marginLeft}mm - 1px);
-                  margin-right: calc(${pageSettings.marginRight}mm - 1px);
+                  z-index: 11;
+                  /* Page number background dots at bottom right of each page */
+                  background-image:
+                    repeating-linear-gradient(
+                      to bottom,
+                      transparent 0mm,
+                      transparent calc(${pageHeight}mm - ${pageSettings.marginBottom * 0.6}mm),
+                      transparent calc(${pageHeight}mm - ${pageSettings.marginBottom * 0.6}mm),
+                      transparent calc(${pageHeight}mm),
+                      transparent calc(${pageHeight}mm)
+                    );
+                  background-size: 100% calc(${pageHeight}mm + 12px);
+                }
+
+                /* Page numbers via JavaScript overlay */
+                .page-number-overlay {
+                  position: absolute;
+                  right: ${pageSettings.marginRight * 0.7}mm;
+                  color: #9ca3af;
+                  font-family: 'Times New Roman', serif;
+                  font-size: 9pt;
+                  pointer-events: none;
+                  z-index: 15;
+                  user-select: none;
                 }
 
                 /* Editor Styles */
@@ -1050,12 +1180,19 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                   body { margin: 0; padding: 0; }
                   .no-print { display: none !important; }
                   .document-pages-container {
+                    background: none !important;
+                  }
+                  .document-page-content {
                     background-image: none !important;
                     box-shadow: none !important;
                     padding: 0 !important;
+                    min-height: auto !important;
                   }
-                  .document-pages-container::before,
-                  .document-pages-container::after {
+                  .document-page-content::before,
+                  .document-page-content::after {
+                    display: none !important;
+                  }
+                  .page-number-overlay {
                     display: none !important;
                   }
                   @page {
@@ -1064,7 +1201,16 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                   }
                 }
               `}</style>
-              <EditorContent editor={editor} />
+              <div className="document-page-content">
+                <EditorContent editor={editor} />
+                {/* Page number overlays - rendered via JS */}
+                <PageNumberOverlay
+                  pageHeight={pageHeight}
+                  marginBottom={pageSettings.marginBottom}
+                  marginRight={pageSettings.marginRight}
+                  gapSize={12}
+                />
+              </div>
             </div>
           </div>
         </div>
