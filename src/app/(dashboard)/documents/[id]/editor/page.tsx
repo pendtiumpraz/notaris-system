@@ -87,14 +87,20 @@ interface DocumentInfo {
   content: string;
 }
 
-// Page number overlay component
-function PageNumberOverlay({
+// Page break overlay component — renders opaque overlays at each page boundary
+// Each overlay covers: bottom margin (white) + dark gap + top margin (white)
+// This hides the text in margin zones, creating a visual page separation
+function PageBreakOverlays({
   pageHeight,
+  contentHeight,
+  marginTop,
   marginBottom,
   marginRight,
   gapSize,
 }: {
   pageHeight: number;
+  contentHeight: number;
+  marginTop: number;
   marginBottom: number;
   marginRight: number;
   gapSize: number;
@@ -108,24 +114,32 @@ function PageNumberOverlay({
 
     const updatePageCount = () => {
       const heightPx = container.scrollHeight;
-      // Convert pageHeight from mm to px (1mm ≈ 3.7795px at 96dpi)
+      // Convert pageHeight from mm to px (96dpi: 1mm ≈ 3.7795px)
       const pageHeightPx = pageHeight * 3.7795;
-      const gapPx = gapSize;
-      const totalPageUnit = pageHeightPx + gapPx;
-      const count = Math.max(1, Math.ceil(heightPx / totalPageUnit));
+      const count = Math.max(1, Math.ceil(heightPx / pageHeightPx));
       setPageCount(count);
     };
 
     updatePageCount();
+
+    // Watch for content changes
     const observer = new ResizeObserver(updatePageCount);
     observer.observe(container);
 
-    return () => observer.disconnect();
-  }, [pageHeight, gapSize]);
+    // Also observe mutations (text typing)
+    const mutObserver = new MutationObserver(updatePageCount);
+    mutObserver.observe(container, { childList: true, subtree: true, characterData: true });
 
-  // Convert mm to px
-  const pageHeightPx = pageHeight * 3.7795;
-  const gapPx = gapSize;
+    return () => {
+      observer.disconnect();
+      mutObserver.disconnect();
+    };
+  }, [pageHeight]);
+
+  const mmToPx = 3.7795; // 96 DPI
+  const pageHeightPx = pageHeight * mmToPx;
+  const marginBottomPx = marginBottom * mmToPx;
+  const marginTopPx = marginTop * mmToPx;
 
   return (
     <div
@@ -137,34 +151,61 @@ function PageNumberOverlay({
         right: 0,
         bottom: 0,
         pointerEvents: 'none',
-        zIndex: 15,
+        zIndex: 20,
+        overflow: 'hidden',
       }}
     >
-      {Array.from({ length: pageCount }, (_, i) => {
-        const pageBottomPx = (i + 1) * pageHeightPx + i * gapPx;
-        const numberPositionPx = pageBottomPx - marginBottom * 0.4 * 3.7795;
+      {/* Page break overlays — one for each page boundary */}
+      {Array.from({ length: Math.max(0, pageCount - 1) }, (_, i) => {
+        // Position: at the end of page (i+1)
+        const breakTopPx = (i + 1) * pageHeightPx - marginBottomPx;
 
         return (
           <div
-            key={i}
-            className="page-number-overlay"
+            key={`break-${i}`}
+            className="page-break-overlay"
             style={{
               position: 'absolute',
-              top: `${numberPositionPx}px`,
-              right: `${marginRight * 0.7 * 3.7795}px`,
-              color: '#9ca3af',
-              fontFamily: "'Times New Roman', serif",
-              fontSize: '9pt',
-              userSelect: 'none',
+              top: `${breakTopPx}px`,
+              left: 0,
+              right: 0,
             }}
           >
-            Halaman {i + 1}
+            {/* Bottom margin zone of page N — opaque white covers text */}
+            <div className="margin-bottom-zone" />
+            {/* Dark gap between pages */}
+            <div className="page-gap" />
+            {/* Top margin zone of page N+1 — opaque white covers text */}
+            <div className="margin-top-zone" />
+          </div>
+        );
+      })}
+
+      {/* Page number labels */}
+      {Array.from({ length: pageCount }, (_, i) => {
+        // Position number near bottom of each page, inside the bottom margin area
+        const pageBottomPx = (i + 1) * pageHeightPx;
+        // Account for gaps from previous breaks
+        // Each break adds (gapSize) px of extra space
+        const numberTopPx = pageBottomPx - marginBottomPx * 0.5;
+
+        return (
+          <div
+            key={`num-${i}`}
+            className="page-number-label"
+            style={{
+              top: `${numberTopPx}px`,
+              right: `${marginRight * 0.6 * mmToPx}px`,
+            }}
+          >
+            - {i + 1} -
           </div>
         );
       })}
     </div>
   );
 }
+
 
 export default function DocumentEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -598,21 +639,19 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
               <div className="flex gap-1">
                 <button
                   onClick={() => setPageSettings({ ...pageSettings, orientation: 'portrait' })}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                    pageSettings.orientation === 'portrait'
-                      ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
-                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${pageSettings.orientation === 'portrait'
+                    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
                 >
                   <Smartphone className="w-3.5 h-3.5" /> Potrait
                 </button>
                 <button
                   onClick={() => setPageSettings({ ...pageSettings, orientation: 'landscape' })}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                    pageSettings.orientation === 'landscape'
-                      ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
-                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${pageSettings.orientation === 'landscape'
+                    ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
                 >
                   <Monitor className="w-3.5 h-3.5" /> Landscape
                 </button>
@@ -943,9 +982,9 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
         {/* Paper Editor */}
         <div
           className="flex-1 flex justify-center overflow-auto"
-          style={{ backgroundColor: '#4a5568' }}
+          style={{ backgroundColor: '#64748b' }}
         >
-          <div className="py-6 px-4">
+          <div className="py-8 px-4">
             {/* Hidden print container */}
             <div
               ref={printRef}
@@ -969,101 +1008,86 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
               }}
             >
               <style>{`
-                /* ===== Google Docs-style multi-page layout ===== */
+                /* ===== Document Pages Layout ===== */
 
-                /* The pages wrapper - stacks pages vertically */
-                .document-pages-container {
-                  /* Each "page" is pageHeight tall, with a 12px gap between */
-                  counter-reset: page-counter;
-                }
-
-                /* Each page is rendered via background + box-shadow trick */
                 .document-pages-container .document-page-content {
                   position: relative;
                   width: 100%;
                   min-height: ${pageHeight}mm;
-                  /* Content sits inside the margins */
-                  padding: ${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm;
+                  /* Left/right margins as padding */
+                  padding-left: ${pageSettings.marginLeft}mm;
+                  padding-right: ${pageSettings.marginRight}mm;
+                  /* First page top margin */
+                  padding-top: ${pageSettings.marginTop}mm;
+                  /* Last page bottom margin */
+                  padding-bottom: ${pageSettings.marginBottom}mm;
                   box-sizing: border-box;
                   background-color: white;
-                  /* Page shadow for premium look */
+                  /* Page shadow */
                   box-shadow:
                     0 1px 3px rgba(0,0,0,0.12),
                     0 4px 6px rgba(0,0,0,0.08),
-                    0 12px 24px rgba(0,0,0,0.12);
-                  /* Visual page breaks */
-                  background-image:
-                    repeating-linear-gradient(
-                      to bottom,
-                      white 0mm,
-                      white ${pageHeight}mm,
-                      transparent ${pageHeight}mm
-                    );
-                  background-size: 100% calc(${pageHeight}mm + 12px);
+                    0 12px 28px rgba(0,0,0,0.15);
                 }
 
-                /* Page separation gap using box-shadow on pseudo-element */
-                .document-page-content::before {
-                  content: '';
+                /* ===== Page break overlay ===== 
+                 * At each page boundary, we draw an OPAQUE overlay that covers:
+                 * - Bottom margin zone of page N (white, covers text)
+                 * - Dark gap separator (gray background visible)
+                 * - Top margin zone of page N+1 (white, covers text)
+                 * This visually "hides" text in margin zones.
+                 */
+                .page-break-overlay {
                   position: absolute;
                   left: 0;
                   right: 0;
+                  z-index: 20;
                   pointer-events: none;
-                  z-index: 10;
-                  /* Repeating page breaks with visible gap */
-                  background-image:
-                    repeating-linear-gradient(
-                      to bottom,
-                      transparent 0mm,
-                      transparent calc(${pageHeight}mm - 1px),
-                      /* Bottom shadow line */
-                      rgba(0,0,0,0.15) calc(${pageHeight}mm - 1px),
-                      rgba(0,0,0,0.15) ${pageHeight}mm,
-                      /* Dark gap between pages */
-                      #4a5568 ${pageHeight}mm,
-                      #4a5568 calc(${pageHeight}mm + 12px),
-                      /* Top shadow line of next page */
-                      rgba(0,0,0,0.15) calc(${pageHeight}mm + 12px),
-                      rgba(0,0,0,0.15) calc(${pageHeight}mm + 13px),
-                      transparent calc(${pageHeight}mm + 13px)
-                    );
-                  background-size: 100% calc(${pageHeight}mm + 12px);
-                  top: 0;
-                  bottom: 0;
+                  display: flex;
+                  flex-direction: column;
                 }
-
-                /* Page number indicators */
-                .document-page-content::after {
+                .page-break-overlay .margin-bottom-zone {
+                  height: ${pageSettings.marginBottom}mm;
+                  background: white;
+                  position: relative;
+                }
+                .page-break-overlay .margin-bottom-zone::after {
+                  content: '';
+                  position: absolute;
+                  bottom: 0;
+                  left: 0;
+                  right: 0;
+                  height: 1px;
+                  background: rgba(0,0,0,0.08);
+                }
+                .page-break-overlay .page-gap {
+                  height: 40px;
+                  background: #64748b;
+                  box-shadow: inset 0 3px 6px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.15);
+                }
+                .page-break-overlay .margin-top-zone {
+                  height: ${pageSettings.marginTop}mm;
+                  background: white;
+                  position: relative;
+                }
+                .page-break-overlay .margin-top-zone::before {
                   content: '';
                   position: absolute;
                   top: 0;
                   left: 0;
                   right: 0;
-                  bottom: 0;
-                  pointer-events: none;
-                  z-index: 11;
-                  /* Page number background dots at bottom right of each page */
-                  background-image:
-                    repeating-linear-gradient(
-                      to bottom,
-                      transparent 0mm,
-                      transparent calc(${pageHeight}mm - ${pageSettings.marginBottom * 0.6}mm),
-                      transparent calc(${pageHeight}mm - ${pageSettings.marginBottom * 0.6}mm),
-                      transparent calc(${pageHeight}mm),
-                      transparent calc(${pageHeight}mm)
-                    );
-                  background-size: 100% calc(${pageHeight}mm + 12px);
+                  height: 1px;
+                  background: rgba(0,0,0,0.08);
                 }
 
-                /* Page numbers via JavaScript overlay */
-                .page-number-overlay {
+                /* Page number label */
+                .page-number-label {
                   position: absolute;
-                  right: ${pageSettings.marginRight * 0.7}mm;
-                  color: #9ca3af;
+                  color: #94a3b8;
                   font-family: 'Times New Roman', serif;
                   font-size: 9pt;
                   pointer-events: none;
-                  z-index: 15;
+                  z-index: 25;
                   user-select: none;
                 }
 
@@ -1179,20 +1203,15 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                 @media print {
                   body { margin: 0; padding: 0; }
                   .no-print { display: none !important; }
-                  .document-pages-container {
-                    background: none !important;
-                  }
+                  .document-pages-container { background: none !important; }
                   .document-page-content {
                     background-image: none !important;
                     box-shadow: none !important;
                     padding: 0 !important;
                     min-height: auto !important;
                   }
-                  .document-page-content::before,
-                  .document-page-content::after {
-                    display: none !important;
-                  }
-                  .page-number-overlay {
+                  .page-break-overlay,
+                  .page-number-label {
                     display: none !important;
                   }
                   @page {
@@ -1203,12 +1222,14 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
               `}</style>
               <div className="document-page-content">
                 <EditorContent editor={editor} />
-                {/* Page number overlays - rendered via JS */}
-                <PageNumberOverlay
+                {/* Page break overlays + page numbers */}
+                <PageBreakOverlays
                   pageHeight={pageHeight}
+                  contentHeight={contentHeight}
+                  marginTop={pageSettings.marginTop}
                   marginBottom={pageSettings.marginBottom}
                   marginRight={pageSettings.marginRight}
-                  gapSize={12}
+                  gapSize={40}
                 />
               </div>
             </div>
@@ -1418,13 +1439,12 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`p-1.5 rounded transition-colors ${
-        active
-          ? 'bg-emerald-600/30 text-emerald-400'
-          : disabled
-            ? 'text-slate-600 cursor-not-allowed'
-            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-      }`}
+      className={`p-1.5 rounded transition-colors ${active
+        ? 'bg-emerald-600/30 text-emerald-400'
+        : disabled
+          ? 'text-slate-600 cursor-not-allowed'
+          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+        }`}
     >
       {icon}
     </button>
