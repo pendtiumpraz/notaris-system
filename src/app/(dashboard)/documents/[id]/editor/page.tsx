@@ -218,8 +218,31 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
             ? 'letter'
             : ([paperDef.width, paperDef.height] as unknown as string);
 
+    // Clone element and strip editor-only visual styles for clean PDF
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.style.backgroundImage = 'none';
+    clone.style.boxShadow = 'none';
+    clone.style.padding = '0';
+    // Remove pseudo-element styles (margin indicators, page lines)
+    const styleEl = clone.querySelector('style');
+    if (styleEl) {
+      styleEl.textContent =
+        styleEl.textContent
+          ?.replace(/\.document-pages-container::before\s*\{[^}]*\}/g, '')
+          ?.replace(/\.document-pages-container::after\s*\{[^}]*\}/g, '')
+          ?.replace(
+            /\.document-pages-container\s*\{[^}]*\}/g,
+            '.document-pages-container { background: white; }'
+          ) || '';
+    }
+
     const opt = {
-      margin: 0,
+      margin: [
+        pageSettings.marginTop,
+        pageSettings.marginRight,
+        pageSettings.marginBottom,
+        pageSettings.marginLeft,
+      ],
       filename: `${docInfo.title.replace(/\s+/g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
@@ -231,7 +254,7 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
 
-    html2pdf().set(opt).from(element).save();
+    html2pdf().set(opt).from(clone).save();
   };
 
   // AI Actions
@@ -830,27 +853,46 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
           <div className="py-4">
             <div
               ref={printRef}
-              className="document-pages-container bg-white shadow-2xl"
+              className="document-pages-container"
               style={{
                 width: `${pageWidth}mm`,
                 minHeight: `${pageHeight}mm`,
-                padding: `${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm`,
+                paddingLeft: `${pageSettings.marginLeft}mm`,
+                paddingRight: `${pageSettings.marginRight}mm`,
+                paddingTop: `${pageSettings.marginTop}mm`,
+                paddingBottom: `${pageSettings.marginBottom}mm`,
                 boxSizing: 'border-box',
                 position: 'relative',
+                backgroundColor: 'white',
               }}
             >
               <style>{`
-                /* Multi-page visual */
+                /* ===== Multi-page visual with per-page margins ===== */
                 .document-pages-container {
+                  /*
+                   * Page layout: Each page = pageHeight mm
+                   * Content area per page = pageHeight - marginTop - marginBottom
+                   * Between pages: bottomMargin of page N + gap + topMargin of page N+1
+                   * 
+                   * The gradient creates:
+                   *  - Content zone: white (contentHeight mm)
+                   *  - Margin zone: light gray (#f1f5f9) for bottom + top margins
+                   *  - Page separator: darker line (#94a3b8) between pages
+                   */
                   background-image:
                     repeating-linear-gradient(
                       to bottom,
-                      transparent 0,
-                      transparent calc(${pageHeight}mm - 1px),
-                      #cbd5e1 calc(${pageHeight}mm - 1px),
-                      #cbd5e1 calc(${pageHeight}mm + 7px),
-                      transparent calc(${pageHeight}mm + 7px)
+                      /* Top margin zone — shown as light tint */
+                      rgba(241,245,249,0.5) 0mm,
+                      rgba(241,245,249,0.5) ${pageSettings.marginTop}mm,
+                      /* Content area — fully white */
+                      transparent ${pageSettings.marginTop}mm,
+                      transparent ${pageHeight - pageSettings.marginBottom}mm,
+                      /* Bottom margin zone — shown as light tint */
+                      rgba(241,245,249,0.5) ${pageHeight - pageSettings.marginBottom}mm,
+                      rgba(241,245,249,0.5) ${pageHeight}mm
                     );
+                  background-size: 100% ${pageHeight}mm;
                   background-color: white;
                   box-shadow:
                     0 0 0 1px rgba(0,0,0,0.05),
@@ -858,7 +900,28 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                     0 20px 25px -5px rgba(0,0,0,0.15);
                 }
 
-                /* Page number watermark */
+                /* Page separator lines between pages */
+                .document-pages-container::after {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  pointer-events: none;
+                  z-index: 2;
+                  background-image:
+                    repeating-linear-gradient(
+                      to bottom,
+                      transparent 0,
+                      transparent calc(${pageHeight}mm - 0.5px),
+                      #94a3b8 calc(${pageHeight}mm - 0.5px),
+                      #94a3b8 calc(${pageHeight}mm + 0.5px),
+                      transparent calc(${pageHeight}mm + 0.5px)
+                    );
+                }
+
+                /* Left/right margin indicators */
                 .document-pages-container::before {
                   content: '';
                   position: absolute;
@@ -867,7 +930,11 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                   right: 0;
                   bottom: 0;
                   pointer-events: none;
-                  z-index: 0;
+                  z-index: 2;
+                  border-left: 1px dashed rgba(203,213,225,0.4);
+                  border-right: 1px dashed rgba(203,213,225,0.4);
+                  margin-left: calc(${pageSettings.marginLeft}mm - 1px);
+                  margin-right: calc(${pageSettings.marginRight}mm - 1px);
                 }
 
                 /* Editor Styles */
@@ -982,6 +1049,15 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                 @media print {
                   body { margin: 0; padding: 0; }
                   .no-print { display: none !important; }
+                  .document-pages-container {
+                    background-image: none !important;
+                    box-shadow: none !important;
+                    padding: 0 !important;
+                  }
+                  .document-pages-container::before,
+                  .document-pages-container::after {
+                    display: none !important;
+                  }
                   @page {
                     size: ${pageWidth}mm ${pageHeight}mm;
                     margin: ${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm;

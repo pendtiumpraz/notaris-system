@@ -302,7 +302,14 @@ export function Sidebar({ userRole, isCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const { isFeatureEnabled, hasActiveLicense } = useFeatureFlags();
 
-  const NO_LICENSE_ALLOWED_HREFS = ['/admin/license', '/admin/users', '/dashboard'];
+  const NO_LICENSE_ALLOWED_HREFS = [
+    '/admin/license',
+    '/admin/users',
+    '/dashboard',
+    '/chat-history',
+    '/admin/ai-analytics',
+    '/admin/knowledge-base',
+  ];
 
   const filteredItems = sidebarItems.filter((item) => {
     if (!item.roles.includes(userRole)) return false;
