@@ -29,6 +29,8 @@ import {
   BookOpen,
   BookText,
   DollarSign,
+  Brain,
+  History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFeatureFlags } from '@/contexts/feature-flags-context';
@@ -149,6 +151,13 @@ const sidebarItems: SidebarItem[] = [
     featureKey: 'notifications',
     category: 'komunikasi',
   },
+  {
+    label: 'Riwayat Chat',
+    href: '/chat-history',
+    icon: <History className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'CLIENT'],
+    category: 'komunikasi',
+  },
 
   // ── Manajemen ──
   {
@@ -213,6 +222,20 @@ const sidebarItems: SidebarItem[] = [
     icon: <ClipboardList className="w-5 h-5" />,
     roles: ['SUPER_ADMIN', 'ADMIN'],
     featureKey: 'audit_logs',
+    category: 'manajemen',
+  },
+  {
+    label: 'AI Analytics',
+    href: '/admin/ai-analytics',
+    icon: <Brain className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+    category: 'manajemen',
+  },
+  {
+    label: 'Knowledge Base',
+    href: '/admin/knowledge-base',
+    icon: <BookOpen className="w-5 h-5" />,
+    roles: ['SUPER_ADMIN', 'ADMIN'],
     category: 'manajemen',
   },
 
