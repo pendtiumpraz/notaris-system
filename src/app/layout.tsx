@@ -14,6 +14,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Client Portal Notaris',
   description: 'Portal klien untuk layanan notaris',
+  manifest: '/manifest.json',
+  themeColor: '#10b981',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Notaris Portal',
+  },
+  icons: {
+    apple: '/icons/icon-192.svg',
+  },
 };
 
 export default function RootLayout({
@@ -23,6 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <SessionProvider>
           <ThemeProvider
@@ -47,6 +62,17 @@ export default function RootLayout({
             />
           </ThemeProvider>
         </SessionProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js').catch(() => {});
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

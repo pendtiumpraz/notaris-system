@@ -22,6 +22,9 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  CalendarDays,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -143,6 +146,10 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 15;
 
@@ -175,6 +182,11 @@ export default function BillingPage() {
     try {
       const params = new URLSearchParams();
       if (statusFilter) params.set('status', statusFilter);
+      if (search) params.set('search', search);
+      if (dateFrom) params.set('dateFrom', dateFrom);
+      if (dateTo) params.set('dateTo', dateTo);
+      params.set('sortBy', sortBy);
+      params.set('sortOrder', sortOrder);
       const res = await fetch(`/api/invoices?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
@@ -185,7 +197,7 @@ export default function BillingPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter]);
+  }, [statusFilter, search, dateFrom, dateTo, sortBy, sortOrder]);
 
   const fetchClients = useCallback(async () => {
     if (!isAdmin) return;
@@ -212,14 +224,7 @@ export default function BillingPage() {
     fetchClients();
   }, [fetchInvoices, fetchClients]);
 
-  const filtered = invoices.filter((inv) => {
-    const q = search.toLowerCase();
-    return (
-      inv.invoiceNumber.toLowerCase().includes(q) ||
-      inv.client.user.name.toLowerCase().includes(q) ||
-      (inv.document?.title?.toLowerCase().includes(q) ?? false)
-    );
-  });
+  const filtered = invoices;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginatedInvoices = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -472,35 +477,98 @@ export default function BillingPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Cari invoice, nama klien..."
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <select
+            value={statusFilter}
             onChange={(e) => {
-              setSearch(e.target.value);
+              setStatusFilter(e.target.value);
               setPage(1);
             }}
-            placeholder="Cari invoice, nama klien..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
+            className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          >
+            <option value="">Semua Status</option>
+            {Object.entries(statusConfig).map(([key, cfg]) => (
+              <option key={key} value={key}>
+                {cfg.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          className="px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        >
-          <option value="">Semua Status</option>
-          {Object.entries(statusConfig).map(([key, cfg]) => (
-            <option key={key} value={key}>
-              {cfg.label}
-            </option>
-          ))}
-        </select>
+
+        {/* Sort & Date Range */}
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-slate-400 shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="createdAt">Tanggal Dibuat</option>
+              <option value="totalAmount">Total</option>
+              <option value="invoiceNumber">No. Invoice</option>
+              <option value="dueDate">Jatuh Tempo</option>
+              <option value="status">Status</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white hover:bg-slate-700 transition-colors"
+            >
+              {sortOrder === 'asc' ? '↑ Asc' : '↓ Desc'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+            <span className="text-slate-500 text-sm">—</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+
+          {(dateFrom || dateTo || sortBy !== 'createdAt' || sortOrder !== 'desc') && (
+            <button
+              onClick={() => {
+                setDateFrom('');
+                setDateTo('');
+                setSortBy('createdAt');
+                setSortOrder('desc');
+              }}
+              className="flex items-center gap-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Reset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Invoice List */}

@@ -11,8 +11,13 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
+  const search = searchParams.get('search') || '';
+  const dateFrom = searchParams.get('dateFrom');
+  const dateTo = searchParams.get('dateTo');
+  const sortBy = searchParams.get('sortBy') || 'createdAt';
+  const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc';
   const page = parseInt(searchParams.get('page') || '1');
-  const limit = parseInt(searchParams.get('limit') || '20');
+  const limit = parseInt(searchParams.get('limit') || '100');
   const skip = (page - 1) * limit;
 
   try {
@@ -34,6 +39,26 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
+    // Date range filter
+    if (dateFrom || dateTo) {
+      where.createdAt = {
+        ...(dateFrom ? { gte: new Date(dateFrom) } : {}),
+        ...(dateTo ? { lte: new Date(dateTo + 'T23:59:59') } : {}),
+      };
+    }
+
+    // Search filter
+    if (search) {
+      where.OR = [
+        { invoiceNumber: { contains: search, mode: 'insensitive' } },
+        { client: { user: { name: { contains: search, mode: 'insensitive' } } } },
+      ];
+    }
+
+    // Determine sort field
+    const validSortFields = ['createdAt', 'totalAmount', 'invoiceNumber', 'dueDate', 'status'];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+
     const [invoices, total] = await Promise.all([
       prisma.invoice.findMany({
         where,
@@ -44,7 +69,7 @@ export async function GET(request: NextRequest) {
           payments: { orderBy: { paidAt: 'desc' } },
           createdBy: { select: { name: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortField]: sortOrder },
         skip,
         take: limit,
       }),
@@ -85,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Calculate amounts
     const tax = taxPercent || 0;
     const disc = discount || 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const subtotal = items.reduce(
       (sum: number, item: any) => sum + item.quantity * item.unitPrice,
       0
