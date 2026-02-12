@@ -222,13 +222,35 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
             let cleanContent = data.content;
             cleanContent = cleanContent.replace(/```html\n?/g, '').replace(/```\n?/g, '');
             editor.commands.setContent(cleanContent);
-            setAiResult(`✅ ${label} berhasil! Konten telah diperbarui.`);
+
+            const structuredInfo = data.isStructured
+              ? ' (Dokumen terstruktur berhasil di-render)'
+              : '';
+            setAiResult(
+              `✅ ${label} berhasil!${structuredInfo} Konten telah diperbarui dan disimpan.`
+            );
             setShowAIPanel(true);
+
+            // Auto-save after AI content update
+            try {
+              const saveRes = await fetch(`/api/documents/${id}/content`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: cleanContent }),
+              });
+              if (saveRes.ok) {
+                setSaveStatus('saved');
+                setTimeout(() => setSaveStatus('idle'), 3000);
+              }
+            } catch {
+              console.error('Auto-save after AI failed');
+            }
+
             await showAISuccess(
               label,
-              `Konten diperbarui dalam ${((data.durationMs || 0) / 1000).toFixed(1)} detik`
+              `Konten diperbarui & disimpan dalam ${((data.durationMs || 0) / 1000).toFixed(1)} detik`
             );
-            toast.success(`${label} berhasil — konten diperbarui`);
+            toast.success(`${label} berhasil — konten diperbarui & disimpan otomatis`);
           }
         }
       } else {
@@ -626,22 +648,24 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                 color: #1a1a1a;
                 font-family: 'Times New Roman', 'Georgia', serif;
                 font-size: 12pt;
-                line-height: 1.8;
+                line-height: 2;
               }
               .ProseMirror h1 {
                 font-size: 16pt;
                 font-weight: bold;
                 text-align: center;
-                margin-bottom: 12pt;
+                margin-bottom: 4pt;
                 color: #000;
                 text-transform: uppercase;
-                letter-spacing: 1px;
+                letter-spacing: 2px;
               }
               .ProseMirror h2 {
-                font-size: 14pt;
+                font-size: 13pt;
                 font-weight: bold;
-                margin-top: 12pt;
-                margin-bottom: 6pt;
+                text-align: center;
+                text-transform: uppercase;
+                margin-top: 16pt;
+                margin-bottom: 8pt;
                 color: #000;
               }
               .ProseMirror h3 {
@@ -652,7 +676,7 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                 color: #000;
               }
               .ProseMirror p {
-                margin-bottom: 6pt;
+                margin-bottom: 4pt;
                 text-align: justify;
                 color: #1a1a1a;
               }
@@ -699,6 +723,31 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
                 margin-left: 0;
                 font-style: italic;
               }
+
+              /* Notarial Document Renderer Styles */
+              .ProseMirror .notarial-doc { font-family: 'Times New Roman', 'Georgia', serif; font-size: 12pt; line-height: 2; color: #000; }
+              .ProseMirror .doc-title { text-align: center; font-size: 16pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4pt; }
+              .ProseMirror .doc-subtitle { text-align: center; font-size: 12pt; margin-bottom: 2pt; }
+              .ProseMirror .doc-number { text-align: center; font-size: 13pt; font-weight: bold; margin-bottom: 16pt; }
+              .ProseMirror .doc-separator { border: none; border-top: 2px solid #000; margin: 12pt 0; }
+              .ProseMirror .doc-separator-thin { border: none; border-top: 1px solid #000; margin: 8pt 0; }
+              .ProseMirror .section-title { font-size: 13pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 16pt 0 8pt 0; }
+              .ProseMirror .pasal-title { font-weight: bold; text-align: center; margin: 16pt 0 8pt 0; font-size: 12pt; }
+              .ProseMirror .pasal-judul { font-weight: bold; text-align: center; margin-bottom: 8pt; font-size: 12pt; text-transform: uppercase; }
+              .ProseMirror .indent { text-indent: 40pt; text-align: justify; margin-bottom: 4pt; }
+              .ProseMirror .no-indent { text-align: justify; margin-bottom: 4pt; }
+              .ProseMirror .komparisi-block { margin: 8pt 0; padding-left: 0; }
+              .ProseMirror .komparisi-label { font-weight: bold; text-transform: uppercase; margin-bottom: 4pt; }
+              .ProseMirror .komparisi-data { margin-left: 20pt; margin-bottom: 2pt; font-family: 'Courier New', monospace; font-size: 11pt; }
+              .ProseMirror .ttd-grid { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 40pt; gap: 20pt; }
+              .ProseMirror .ttd-box { text-align: center; min-width: 180pt; }
+              .ProseMirror .ttd-label { font-size: 11pt; margin-bottom: 60pt; }
+              .ProseMirror .ttd-line { border-bottom: 1px solid #000; margin-bottom: 4pt; }
+              .ProseMirror .ttd-name { font-weight: bold; font-size: 11pt; }
+              .ProseMirror .premisse-item { padding-left: 20pt; text-align: justify; margin-bottom: 4pt; position: relative; }
+              .ProseMirror .premisse-item::before { content: "- "; position: absolute; left: 0; }
+              .ProseMirror .ayat-list { list-style-type: lower-alpha; margin-left: 40pt; margin-bottom: 8pt; }
+              .ProseMirror .ayat-list li { margin-bottom: 4pt; text-align: justify; }
 
               /* Print styles */
               @media print {
