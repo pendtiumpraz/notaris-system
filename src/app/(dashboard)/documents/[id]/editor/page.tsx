@@ -47,9 +47,36 @@ import {
   BookOpen,
   Languages,
   Mail,
+  Settings2,
+  Monitor,
+  Smartphone,
+  Minus,
+  Plus as PlusIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+
+// ============================================================
+// PAPER SIZE DEFINITIONS
+// ============================================================
+const PAPER_SIZES: Record<string, { label: string; width: number; height: number }> = {
+  A4: { label: 'A4 (210 × 297mm)', width: 210, height: 297 },
+  LEGAL: { label: 'Legal (216 × 356mm)', width: 216, height: 356 },
+  LETTER: { label: 'Letter (216 × 279mm)', width: 216, height: 279 },
+  F4: { label: 'F4/Folio (215 × 330mm)', width: 215, height: 330 },
+};
+
+const FONT_SIZES = [8, 9, 10, 11, 12, 13, 14, 16, 18, 20, 24];
+
+interface PageSettings {
+  paperSize: string;
+  orientation: 'portrait' | 'landscape';
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
+  fontSize: number;
+}
 
 interface DocumentInfo {
   id: string;
@@ -82,7 +109,23 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
   const [compareResult, setCompareResult] = useState('');
   const [letterType, setLetterType] = useState('Surat Pemberitahuan');
   const [letterContext, setLetterContext] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [pageSettings, setPageSettings] = useState<PageSettings>({
+    paperSize: 'A4',
+    orientation: 'portrait',
+    marginTop: 25,
+    marginBottom: 25,
+    marginLeft: 25,
+    marginRight: 20,
+    fontSize: 12,
+  });
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Computed paper dimensions
+  const paperDef = PAPER_SIZES[pageSettings.paperSize] || PAPER_SIZES.A4;
+  const pageWidth = pageSettings.orientation === 'portrait' ? paperDef.width : paperDef.height;
+  const pageHeight = pageSettings.orientation === 'portrait' ? paperDef.height : paperDef.width;
+  const contentHeight = pageHeight - pageSettings.marginTop - pageSettings.marginBottom;
 
   const editor = useEditor({
     extensions: [
@@ -166,12 +209,25 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
     const html2pdf = (await import('html2pdf.js')).default;
 
     const element = printRef.current;
+    const jsPdfFormat =
+      pageSettings.paperSize === 'A4'
+        ? 'a4'
+        : pageSettings.paperSize === 'LEGAL'
+          ? 'legal'
+          : pageSettings.paperSize === 'LETTER'
+            ? 'letter'
+            : ([paperDef.width, paperDef.height] as unknown as string);
+
     const opt = {
       margin: 0,
       filename: `${docInfo.title.replace(/\s+/g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
+      jsPDF: {
+        unit: 'mm',
+        format: jsPdfFormat,
+        orientation: pageSettings.orientation as 'portrait' | 'landscape',
+      },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
 
@@ -339,7 +395,7 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
@@ -350,7 +406,10 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
           </Link>
           <div>
             <h1 className="text-xl font-bold text-white">{docInfo?.title || 'Editor Dokumen'}</h1>
-            <p className="text-sm text-slate-400">{docInfo?.documentType} — Editor A4</p>
+            <p className="text-sm text-slate-400">
+              {docInfo?.documentType} — {PAPER_SIZES[pageSettings.paperSize]?.label}{' '}
+              {pageSettings.orientation === 'portrait' ? 'Potrait' : 'Landscape'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -387,8 +446,144 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
             <Download className="w-4 h-4 mr-2" />
             Export PDF
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowSettings(!showSettings)}
+            className={`border-slate-700 text-slate-300 hover:text-white ${showSettings ? 'bg-slate-800 text-white' : ''}`}
+          >
+            <Settings2 className="w-4 h-4 mr-2" />
+            Page Setup
+          </Button>
         </div>
       </div>
+
+      {/* Page Settings Panel */}
+      {showSettings && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="flex flex-wrap items-end gap-4">
+            {/* Paper Size */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Ukuran Kertas</label>
+              <select
+                value={pageSettings.paperSize}
+                onChange={(e) => setPageSettings({ ...pageSettings, paperSize: e.target.value })}
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"
+              >
+                {Object.entries(PAPER_SIZES).map(([key, { label }]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Orientation */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Orientasi</label>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setPageSettings({ ...pageSettings, orientation: 'portrait' })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    pageSettings.orientation === 'portrait'
+                      ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" /> Potrait
+                </button>
+                <button
+                  onClick={() => setPageSettings({ ...pageSettings, orientation: 'landscape' })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                    pageSettings.orientation === 'landscape'
+                      ? 'bg-emerald-600/20 border-emerald-500/50 text-emerald-400'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Monitor className="w-3.5 h-3.5" /> Landscape
+                </button>
+              </div>
+            </div>
+
+            {/* Margins */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Margin (mm)</label>
+              <div className="flex gap-2">
+                {(['marginTop', 'marginBottom', 'marginLeft', 'marginRight'] as const).map(
+                  (key) => (
+                    <div key={key} className="flex flex-col items-center">
+                      <span className="text-[10px] text-slate-500 mb-0.5">
+                        {key === 'marginTop'
+                          ? 'Atas'
+                          : key === 'marginBottom'
+                            ? 'Bawah'
+                            : key === 'marginLeft'
+                              ? 'Kiri'
+                              : 'Kanan'}
+                      </span>
+                      <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg">
+                        <button
+                          onClick={() =>
+                            setPageSettings({
+                              ...pageSettings,
+                              [key]: Math.max(5, pageSettings[key] - 5),
+                            })
+                          }
+                          className="px-1.5 py-1 text-slate-400 hover:text-white"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-xs text-white w-6 text-center">
+                          {pageSettings[key]}
+                        </span>
+                        <button
+                          onClick={() =>
+                            setPageSettings({
+                              ...pageSettings,
+                              [key]: Math.min(50, pageSettings[key] + 5),
+                            })
+                          }
+                          className="px-1.5 py-1 text-slate-400 hover:text-white"
+                        >
+                          <PlusIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <label className="text-xs text-slate-400 block mb-1">Ukuran Font</label>
+              <select
+                value={pageSettings.fontSize}
+                onChange={(e) =>
+                  setPageSettings({ ...pageSettings, fontSize: Number(e.target.value) })
+                }
+                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"
+              >
+                {FONT_SIZES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}pt
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Preview Info */}
+            <div className="ml-auto text-right">
+              <p className="text-xs text-slate-500">
+                Halaman: {pageWidth}mm × {pageHeight}mm
+              </p>
+              <p className="text-xs text-slate-500">
+                Area cetak: {pageWidth - pageSettings.marginLeft - pageSettings.marginRight}mm ×{' '}
+                {contentHeight}mm
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       {isStaffOrAdmin && (
@@ -630,132 +825,171 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
 
       {/* Main Content Area */}
       <div className="flex gap-4">
-        {/* A4 Editor */}
-        <div className="flex-1 flex justify-center">
-          <div
-            ref={printRef}
-            className="bg-white shadow-2xl rounded-sm"
-            style={{
-              width: '210mm',
-              minHeight: '297mm',
-              padding: '25mm 20mm 25mm 25mm',
-              boxSizing: 'border-box',
-            }}
-          >
-            <style>{`
-              /* A4 Editor Styles */
-              .ProseMirror {
-                color: #1a1a1a;
-                font-family: 'Times New Roman', 'Georgia', serif;
-                font-size: 12pt;
-                line-height: 2;
-              }
-              .ProseMirror h1 {
-                font-size: 16pt;
-                font-weight: bold;
-                text-align: center;
-                margin-bottom: 4pt;
-                color: #000;
-                text-transform: uppercase;
-                letter-spacing: 2px;
-              }
-              .ProseMirror h2 {
-                font-size: 13pt;
-                font-weight: bold;
-                text-align: center;
-                text-transform: uppercase;
-                margin-top: 16pt;
-                margin-bottom: 8pt;
-                color: #000;
-              }
-              .ProseMirror h3 {
-                font-size: 12pt;
-                font-weight: bold;
-                margin-top: 8pt;
-                margin-bottom: 4pt;
-                color: #000;
-              }
-              .ProseMirror p {
-                margin-bottom: 4pt;
-                text-align: justify;
-                color: #1a1a1a;
-              }
-              .ProseMirror ul, .ProseMirror ol {
-                margin-left: 20pt;
-                margin-bottom: 6pt;
-              }
-              .ProseMirror li {
-                margin-bottom: 3pt;
-              }
-              .ProseMirror table {
-                border-collapse: collapse;
-                width: 100%;
-                margin: 12pt 0;
-              }
-              .ProseMirror th, .ProseMirror td {
-                border: 1px solid #333;
-                padding: 6pt 8pt;
-                text-align: left;
-                font-size: 11pt;
-              }
-              .ProseMirror th {
-                background: #f5f5f5;
-                font-weight: bold;
-              }
-              .ProseMirror p.is-editor-empty:first-child::before {
-                color: #adb5bd;
-                content: attr(data-placeholder);
-                float: left;
-                height: 0;
-                pointer-events: none;
-              }
-              .ProseMirror:focus {
-                outline: none;
-              }
-              .ProseMirror hr {
-                border: none;
-                border-top: 1px solid #333;
-                margin: 12pt 0;
-              }
-              .ProseMirror blockquote {
-                border-left: 3px solid #333;
-                padding-left: 12pt;
-                margin-left: 0;
-                font-style: italic;
-              }
+        {/* Paper Editor */}
+        <div className="flex-1 flex justify-center overflow-auto">
+          <div className="py-4">
+            <div
+              ref={printRef}
+              className="document-pages-container bg-white shadow-2xl"
+              style={{
+                width: `${pageWidth}mm`,
+                minHeight: `${pageHeight}mm`,
+                padding: `${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm`,
+                boxSizing: 'border-box',
+                position: 'relative',
+              }}
+            >
+              <style>{`
+                /* Multi-page visual */
+                .document-pages-container {
+                  background-image:
+                    repeating-linear-gradient(
+                      to bottom,
+                      transparent 0,
+                      transparent calc(${pageHeight}mm - 1px),
+                      #cbd5e1 calc(${pageHeight}mm - 1px),
+                      #cbd5e1 calc(${pageHeight}mm + 7px),
+                      transparent calc(${pageHeight}mm + 7px)
+                    );
+                  background-color: white;
+                  box-shadow:
+                    0 0 0 1px rgba(0,0,0,0.05),
+                    0 4px 6px -1px rgba(0,0,0,0.1),
+                    0 20px 25px -5px rgba(0,0,0,0.15);
+                }
 
-              /* Notarial Document Renderer Styles */
-              .ProseMirror .notarial-doc { font-family: 'Times New Roman', 'Georgia', serif; font-size: 12pt; line-height: 2; color: #000; }
-              .ProseMirror .doc-title { text-align: center; font-size: 16pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4pt; }
-              .ProseMirror .doc-subtitle { text-align: center; font-size: 12pt; margin-bottom: 2pt; }
-              .ProseMirror .doc-number { text-align: center; font-size: 13pt; font-weight: bold; margin-bottom: 16pt; }
-              .ProseMirror .doc-separator { border: none; border-top: 2px solid #000; margin: 12pt 0; }
-              .ProseMirror .doc-separator-thin { border: none; border-top: 1px solid #000; margin: 8pt 0; }
-              .ProseMirror .section-title { font-size: 13pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 16pt 0 8pt 0; }
-              .ProseMirror .pasal-title { font-weight: bold; text-align: center; margin: 16pt 0 8pt 0; font-size: 12pt; }
-              .ProseMirror .pasal-judul { font-weight: bold; text-align: center; margin-bottom: 8pt; font-size: 12pt; text-transform: uppercase; }
-              .ProseMirror .indent { text-indent: 40pt; text-align: justify; margin-bottom: 4pt; }
-              .ProseMirror .no-indent { text-align: justify; margin-bottom: 4pt; }
-              .ProseMirror .komparisi-block { margin: 8pt 0; padding-left: 0; }
-              .ProseMirror .komparisi-label { font-weight: bold; text-transform: uppercase; margin-bottom: 4pt; }
-              .ProseMirror .komparisi-data { margin-left: 20pt; margin-bottom: 2pt; font-family: 'Courier New', monospace; font-size: 11pt; }
-              .ProseMirror .ttd-grid { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 40pt; gap: 20pt; }
-              .ProseMirror .ttd-box { text-align: center; min-width: 180pt; }
-              .ProseMirror .ttd-label { font-size: 11pt; margin-bottom: 60pt; }
-              .ProseMirror .ttd-line { border-bottom: 1px solid #000; margin-bottom: 4pt; }
-              .ProseMirror .ttd-name { font-weight: bold; font-size: 11pt; }
-              .ProseMirror .premisse-item { padding-left: 20pt; text-align: justify; margin-bottom: 4pt; position: relative; }
-              .ProseMirror .premisse-item::before { content: "- "; position: absolute; left: 0; }
-              .ProseMirror .ayat-list { list-style-type: lower-alpha; margin-left: 40pt; margin-bottom: 8pt; }
-              .ProseMirror .ayat-list li { margin-bottom: 4pt; text-align: justify; }
+                /* Page number watermark */
+                .document-pages-container::before {
+                  content: '';
+                  position: absolute;
+                  top: 0;
+                  left: 0;
+                  right: 0;
+                  bottom: 0;
+                  pointer-events: none;
+                  z-index: 0;
+                }
 
-              /* Print styles */
-              @media print {
-                body { margin: 0; padding: 0; }
-                .no-print { display: none !important; }
-              }
-            `}</style>
-            <EditorContent editor={editor} />
+                /* Editor Styles */
+                .ProseMirror {
+                  color: #1a1a1a;
+                  font-family: 'Times New Roman', 'Georgia', serif;
+                  font-size: ${pageSettings.fontSize}pt;
+                  line-height: 2;
+                  position: relative;
+                  z-index: 1;
+                }
+                .ProseMirror h1 {
+                  font-size: ${Math.round(pageSettings.fontSize * 1.33)}pt;
+                  font-weight: bold;
+                  text-align: center;
+                  margin-bottom: 4pt;
+                  color: #000;
+                  text-transform: uppercase;
+                  letter-spacing: 2px;
+                }
+                .ProseMirror h2 {
+                  font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt;
+                  font-weight: bold;
+                  text-align: center;
+                  text-transform: uppercase;
+                  margin-top: 16pt;
+                  margin-bottom: 8pt;
+                  color: #000;
+                }
+                .ProseMirror h3 {
+                  font-size: ${pageSettings.fontSize}pt;
+                  font-weight: bold;
+                  margin-top: 8pt;
+                  margin-bottom: 4pt;
+                  color: #000;
+                }
+                .ProseMirror p {
+                  margin-bottom: 4pt;
+                  text-align: justify;
+                  color: #1a1a1a;
+                }
+                .ProseMirror ul, .ProseMirror ol {
+                  margin-left: 20pt;
+                  margin-bottom: 6pt;
+                }
+                .ProseMirror li {
+                  margin-bottom: 3pt;
+                }
+                .ProseMirror table {
+                  border-collapse: collapse;
+                  width: 100%;
+                  margin: 12pt 0;
+                }
+                .ProseMirror th, .ProseMirror td {
+                  border: 1px solid #333;
+                  padding: 6pt 8pt;
+                  text-align: left;
+                  font-size: ${pageSettings.fontSize - 1}pt;
+                }
+                .ProseMirror th {
+                  background: #f5f5f5;
+                  font-weight: bold;
+                }
+                .ProseMirror p.is-editor-empty:first-child::before {
+                  color: #adb5bd;
+                  content: attr(data-placeholder);
+                  float: left;
+                  height: 0;
+                  pointer-events: none;
+                }
+                .ProseMirror:focus {
+                  outline: none;
+                }
+                .ProseMirror hr {
+                  border: none;
+                  border-top: 1px solid #333;
+                  margin: 12pt 0;
+                }
+                .ProseMirror blockquote {
+                  border-left: 3px solid #333;
+                  padding-left: 12pt;
+                  margin-left: 0;
+                  font-style: italic;
+                }
+
+                /* Notarial Document Renderer Styles */
+                .ProseMirror .notarial-doc { font-family: 'Times New Roman', 'Georgia', serif; font-size: ${pageSettings.fontSize}pt; line-height: 2; color: #000; }
+                .ProseMirror .doc-title { text-align: center; font-size: ${Math.round(pageSettings.fontSize * 1.33)}pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4pt; }
+                .ProseMirror .doc-subtitle { text-align: center; font-size: ${pageSettings.fontSize}pt; margin-bottom: 2pt; }
+                .ProseMirror .doc-number { text-align: center; font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; margin-bottom: 16pt; }
+                .ProseMirror .doc-separator { border: none; border-top: 2px solid #000; margin: 12pt 0; }
+                .ProseMirror .doc-separator-thin { border: none; border-top: 1px solid #000; margin: 8pt 0; }
+                .ProseMirror .section-title { font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 16pt 0 8pt 0; }
+                .ProseMirror .pasal-title { font-weight: bold; text-align: center; margin: 16pt 0 8pt 0; font-size: ${pageSettings.fontSize}pt; }
+                .ProseMirror .pasal-judul { font-weight: bold; text-align: center; margin-bottom: 8pt; font-size: ${pageSettings.fontSize}pt; text-transform: uppercase; }
+                .ProseMirror .indent { text-indent: 40pt; text-align: justify; margin-bottom: 4pt; }
+                .ProseMirror .no-indent { text-align: justify; margin-bottom: 4pt; }
+                .ProseMirror .komparisi-block { margin: 8pt 0; padding-left: 0; }
+                .ProseMirror .komparisi-label { font-weight: bold; text-transform: uppercase; margin-bottom: 4pt; }
+                .ProseMirror .komparisi-data { margin-left: 20pt; margin-bottom: 2pt; font-family: 'Courier New', monospace; font-size: ${pageSettings.fontSize - 1}pt; }
+                .ProseMirror .ttd-grid { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 40pt; gap: 20pt; }
+                .ProseMirror .ttd-box { text-align: center; min-width: 150pt; }
+                .ProseMirror .ttd-label { font-size: ${pageSettings.fontSize - 1}pt; margin-bottom: 60pt; }
+                .ProseMirror .ttd-line { border-bottom: 1px solid #000; margin-bottom: 4pt; }
+                .ProseMirror .ttd-name { font-weight: bold; font-size: ${pageSettings.fontSize - 1}pt; }
+                .ProseMirror .premisse-item { padding-left: 20pt; text-align: justify; margin-bottom: 4pt; position: relative; }
+                .ProseMirror .premisse-item::before { content: "- "; position: absolute; left: 0; }
+                .ProseMirror .ayat-list { list-style-type: lower-alpha; margin-left: 40pt; margin-bottom: 8pt; }
+                .ProseMirror .ayat-list li { margin-bottom: 4pt; text-align: justify; }
+
+                /* Print / PDF styles */
+                @media print {
+                  body { margin: 0; padding: 0; }
+                  .no-print { display: none !important; }
+                  @page {
+                    size: ${pageWidth}mm ${pageHeight}mm;
+                    margin: ${pageSettings.marginTop}mm ${pageSettings.marginRight}mm ${pageSettings.marginBottom}mm ${pageSettings.marginLeft}mm;
+                  }
+                }
+              `}</style>
+              <EditorContent editor={editor} />
+            </div>
           </div>
         </div>
 
