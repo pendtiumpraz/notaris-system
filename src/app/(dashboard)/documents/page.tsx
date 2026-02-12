@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { showDeleteConfirm } from '@/lib/swal';
@@ -11,6 +12,7 @@ import {
   Filter,
   Eye,
   Pencil,
+  PenLine,
   Trash2,
   Loader2,
   Upload,
@@ -101,6 +103,7 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
 
 export default function DocumentsPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const userRole = session?.user?.role;
   const isStaffOrAdmin = ['SUPER_ADMIN', 'ADMIN', 'STAFF'].includes(userRole || '');
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole || '');
@@ -287,6 +290,14 @@ export default function DocumentsPage() {
 
         setPendingFiles([]);
         setUploadProgress('');
+
+        // On create, redirect to the document editor
+        if (sheetMode === 'create' && doc.id) {
+          toast.success('Dokumen berhasil dibuat! Mengarahkan ke editor...');
+          router.push(`/documents/${doc.id}/editor`);
+          return;
+        }
+
         setIsSheetOpen(false);
         fetchDocuments();
       }
@@ -389,6 +400,7 @@ export default function DocumentsPage() {
                         size="icon"
                         onClick={() => openViewSheet(doc)}
                         className="text-slate-400 hover:text-white"
+                        title="Detail"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -397,8 +409,18 @@ export default function DocumentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => router.push(`/documents/${doc.id}/editor`)}
+                            className="text-emerald-400 hover:text-emerald-300"
+                            title="Buka Editor"
+                          >
+                            <PenLine className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => openEditSheet(doc)}
                             className="text-slate-400 hover:text-white"
+                            title="Edit Info"
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
@@ -408,6 +430,7 @@ export default function DocumentsPage() {
                               size="icon"
                               onClick={() => handleDelete(doc.id)}
                               className="text-slate-400 hover:text-red-400"
+                              title="Hapus"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
