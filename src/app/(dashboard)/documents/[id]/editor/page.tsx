@@ -327,68 +327,50 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
 
     const html2pdf = (await import('html2pdf.js')).default;
 
-    // Create a temporary container appended to document.body for html2canvas
-    const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = `
+    // Find the actual rendered ProseMirror editor element
+    const proseMirrorEl = document.querySelector('.ProseMirror');
+    if (!proseMirrorEl) {
+      console.error('ProseMirror element not found');
+      return;
+    }
+
+    // Clone the rendered content (preserves all computed styles)
+    const contentClone = proseMirrorEl.cloneNode(true) as HTMLElement;
+
+    // Remove any contenteditable artifacts
+    contentClone.removeAttribute('contenteditable');
+    contentClone.removeAttribute('role');
+    contentClone.classList.remove('ProseMirror');
+
+    // Create wrapper with white background
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `
       position: fixed;
       left: 0;
       top: 0;
       width: ${pageWidth}mm;
       background: white;
+      color: #1a1a1a;
+      font-family: 'Times New Roman', 'Georgia', serif;
+      font-size: ${pageSettings.fontSize}pt;
+      line-height: 2;
       z-index: -9999;
       pointer-events: none;
-      overflow: hidden;
-    `;
-    tempContainer.innerHTML = `
-      <style>
-        .pdf-export-content {
-          color: #1a1a1a;
-          font-family: 'Times New Roman', 'Georgia', serif;
-          font-size: ${pageSettings.fontSize}pt;
-          line-height: 2;
-        }
-        .pdf-export-content h1 { font-size: ${Math.round(pageSettings.fontSize * 1.33)}pt; font-weight: bold; text-align: center; margin-bottom: 4pt; text-transform: uppercase; letter-spacing: 2px; color: #000; }
-        .pdf-export-content h2 { font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; text-align: center; text-transform: uppercase; margin: 16pt 0 8pt; color: #000; }
-        .pdf-export-content h3 { font-size: ${pageSettings.fontSize}pt; font-weight: bold; margin: 8pt 0 4pt; color: #000; }
-        .pdf-export-content p { margin-bottom: 4pt; text-align: justify; color: #1a1a1a; }
-        .pdf-export-content ul, .pdf-export-content ol { margin-left: 20pt; margin-bottom: 6pt; }
-        .pdf-export-content li { margin-bottom: 3pt; }
-        .pdf-export-content table { border-collapse: collapse; width: 100%; margin: 12pt 0; }
-        .pdf-export-content th, .pdf-export-content td { border: 1px solid #333; padding: 6pt 8pt; font-size: ${pageSettings.fontSize - 1}pt; text-align: left; }
-        .pdf-export-content th { background: #f5f5f5; font-weight: bold; }
-        .pdf-export-content hr { border: none; border-top: 1px solid #333; margin: 12pt 0; }
-        .pdf-export-content blockquote { border-left: 3px solid #333; padding-left: 12pt; margin-left: 0; font-style: italic; }
-        .pdf-export-content .notarial-doc { font-family: 'Times New Roman', 'Georgia', serif; font-size: ${pageSettings.fontSize}pt; line-height: 2; color: #000; }
-        .pdf-export-content .doc-title { text-align: center; font-size: ${Math.round(pageSettings.fontSize * 1.33)}pt; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4pt; }
-        .pdf-export-content .doc-subtitle { text-align: center; font-size: ${pageSettings.fontSize}pt; margin-bottom: 2pt; }
-        .pdf-export-content .doc-number { text-align: center; font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; margin-bottom: 16pt; }
-        .pdf-export-content .doc-separator { border: none; border-top: 2px solid #000; margin: 12pt 0; }
-        .pdf-export-content .doc-separator-thin { border: none; border-top: 1px solid #000; margin: 8pt 0; }
-        .pdf-export-content .section-title { font-size: ${Math.round(pageSettings.fontSize * 1.08)}pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 16pt 0 8pt 0; }
-        .pdf-export-content .pasal-title { font-weight: bold; text-align: center; margin: 16pt 0 8pt 0; }
-        .pdf-export-content .pasal-judul { font-weight: bold; text-align: center; margin-bottom: 8pt; text-transform: uppercase; }
-        .pdf-export-content .indent { text-indent: 40pt; text-align: justify; margin-bottom: 4pt; }
-        .pdf-export-content .no-indent { text-align: justify; margin-bottom: 4pt; }
-        .pdf-export-content .komparisi-block { margin: 8pt 0; }
-        .pdf-export-content .komparisi-label { font-weight: bold; text-transform: uppercase; margin-bottom: 4pt; }
-        .pdf-export-content .komparisi-data { margin-left: 20pt; margin-bottom: 2pt; font-family: 'Courier New', monospace; font-size: ${pageSettings.fontSize - 1}pt; }
-        .pdf-export-content .ttd-grid { display: flex; flex-wrap: wrap; justify-content: space-between; margin-top: 40pt; gap: 20pt; }
-        .pdf-export-content .ttd-box { text-align: center; min-width: 150pt; }
-        .pdf-export-content .ttd-label { font-size: ${pageSettings.fontSize - 1}pt; margin-bottom: 60pt; }
-        .pdf-export-content .ttd-line { border-bottom: 1px solid #000; margin-bottom: 4pt; }
-        .pdf-export-content .ttd-name { font-weight: bold; font-size: ${pageSettings.fontSize - 1}pt; }
-        .pdf-export-content .premisse-item { padding-left: 20pt; text-align: justify; margin-bottom: 4pt; position: relative; }
-        .pdf-export-content .premisse-item::before { content: "- "; position: absolute; left: 0; }
-        .pdf-export-content .ayat-list { list-style-type: lower-alpha; margin-left: 40pt; margin-bottom: 8pt; }
-        .pdf-export-content .ayat-list li { margin-bottom: 4pt; text-align: justify; }
-      </style>
-      <div class="pdf-export-content">${editor.getHTML()}</div>
     `;
 
-    document.body.appendChild(tempContainer);
+    // Apply inline styles to the content clone to ensure they render
+    contentClone.style.cssText = `
+      color: #1a1a1a;
+      font-family: 'Times New Roman', 'Georgia', serif;
+      font-size: ${pageSettings.fontSize}pt;
+      line-height: 2;
+    `;
 
-    // Brief delay to let browser layout the element
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    wrapper.appendChild(contentClone);
+    document.body.appendChild(wrapper);
+
+    // Give browser time to layout
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     const jsPdfFormat =
       pageSettings.paperSize === 'A4'
@@ -408,7 +390,12 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       ],
       filename: `${docInfo.title.replace(/\s+/g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      },
       jsPDF: {
         unit: 'mm',
         format: jsPdfFormat,
@@ -418,10 +405,9 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
     };
 
     try {
-      await html2pdf().set(opt).from(tempContainer).save();
+      await html2pdf().set(opt).from(wrapper).save();
     } finally {
-      // Clean up
-      document.body.removeChild(tempContainer);
+      document.body.removeChild(wrapper);
     }
   };
 
