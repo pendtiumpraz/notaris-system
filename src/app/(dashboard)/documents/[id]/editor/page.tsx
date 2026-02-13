@@ -332,8 +332,12 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
 
     // Build a complete self-styled HTML string
     // html2pdf.js accepts HTML strings directly and handles rendering internally
+    // Content area width must match editor: pageWidth - marginLeft - marginRight
+    const contentWidthMM = pageWidth - pageSettings.marginLeft - pageSettings.marginRight;
+
     const styledHTML = `
       <div id="pdf-export-root" style="
+        width: ${contentWidthMM}mm;
         color: #1a1a1a;
         font-family: 'Times New Roman', 'Georgia', serif;
         font-size: ${pageSettings.fontSize}pt;
@@ -400,16 +404,15 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       html2canvas: {
         scale: 2,
         useCORS: true,
-        logging: true,
+        logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: Math.round(pageWidth * 3.7795),
       },
       jsPDF: {
         unit: 'mm',
         format: jsPdfFormat,
         orientation: pageSettings.orientation as 'portrait' | 'landscape',
       },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+      pagebreak: { mode: ['css', 'legacy'] },
     };
 
     // html2pdf handles string input by creating its own temp element internally
