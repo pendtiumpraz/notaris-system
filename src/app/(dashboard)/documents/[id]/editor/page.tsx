@@ -336,8 +336,8 @@ export default function DocumentEditorPage({ params }: { params: Promise<{ id: s
       width: ${pageWidth}mm;
       background: white;
       z-index: -9999;
-      opacity: 0;
       pointer-events: none;
+      overflow: hidden;
     `;
     tempContainer.innerHTML = `
       <style>
